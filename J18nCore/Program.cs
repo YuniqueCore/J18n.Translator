@@ -1,6 +1,4 @@
-﻿using J18nCore.Attributes;
-
-namespace J18nCore;
+﻿namespace J18nCore;
 
 public class Program
 {
