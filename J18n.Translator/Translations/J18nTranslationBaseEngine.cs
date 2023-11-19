@@ -1,4 +1,6 @@
-﻿namespace J18nTranslator.Translations;
+﻿using J18n.Translations;
+
+namespace J18n.Translator.Translations;
 
 /// <summary>
 /// Translation Engine Base Factory

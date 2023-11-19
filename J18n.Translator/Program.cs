@@ -1,4 +1,4 @@
-﻿namespace J18nTranslator;
+﻿namespace J18n.Translator;
 
 public class Program
 {

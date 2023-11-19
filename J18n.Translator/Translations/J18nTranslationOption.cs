@@ -1,6 +1,6 @@
-using J18nTranslator.Attributes;
+using J18n.Translator.Attributes;
 
-namespace J18nTranslator.Translations;
+namespace J18n.Translations;
 
 
 public enum J18nLanguage

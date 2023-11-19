@@ -1,6 +1,6 @@
-﻿using J18nTranslator.Attributes;
+﻿using J18n.Translator.Attributes;
 
-namespace J18nTranslator.Translations;
+namespace J18n.Translations;
 
 [Aliases("Normal Translation API")]
 public class NormalAPI : ITranslationAPI
