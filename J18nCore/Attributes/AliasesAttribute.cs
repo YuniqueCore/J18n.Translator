@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace J18nCore.Attributes;
+namespace J18nTranslator.Attributes;
 
 
 [AttributeUsage(AttributeTargets.All , Inherited = false , AllowMultiple = false)]

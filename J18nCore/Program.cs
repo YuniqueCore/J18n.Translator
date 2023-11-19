@@ -1,4 +1,4 @@
-﻿namespace J18nCore;
+﻿namespace J18nTranslator;
 
 public class Program
 {
