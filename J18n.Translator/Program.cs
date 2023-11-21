@@ -1,4 +1,6 @@
-﻿namespace J18n.Translator;
+﻿using Newtonsoft.Json.Linq;
+
+namespace J18n.Translator;
 
 public class Program
 {
@@ -6,4 +8,9 @@ public class Program
     {
         Console.WriteLine("Hello, World!");
     }
+}
+
+public class J18nNode : JObject
+{
+
 }

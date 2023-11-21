@@ -1,4 +1,4 @@
-namespace J18n.Test;
+namespace J18n.Test.TestSuites;
 
 
 
@@ -8,7 +8,7 @@ public class TranslatorTest
     private string Name { get; set; } = nameof(TranslatorTest);
 
     [TestInitialize]
-    public void PreHandler( )
+    public void PreHandler(string a)
     {
 
     }
@@ -17,6 +17,6 @@ public class TranslatorTest
     public void TranslatorBuilderTest( )
     {
 
-
     }
+
 }
