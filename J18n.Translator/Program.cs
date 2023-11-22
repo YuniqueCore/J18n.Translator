@@ -21,13 +21,11 @@ public class J18nParser
 {
     public static async Task<object?> ParseJsonToJ18n(string json , CancellationToken cToken)
     {
-        await Task.Run(( ) =>
+        return await Task.Run(( ) =>
          {
              var j18nRoot = JsonConvert.DeserializeObject(json);
              return j18nRoot;
          } , cToken);
-
-        return null;
     }
 
 }
