@@ -37,7 +37,7 @@ public class JsonTest
     [DataRow(JsonData.test_Nested)]
     public async Task DeserializeJsonTest(string json)
     {
-        var J18nObject = await J18nParser.ParseJsonToJ18n(json , CTS.Token);
-        Assert.IsNotNull(J18nObject);
+        var J18nObject = await J18nParser.ParseJsonToJ18nRootAsync(json , CTS.Token);
+        Assert.IsTrue(J18nObject?.Children().Count() == 10);
     }
 }
