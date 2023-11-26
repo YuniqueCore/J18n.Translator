@@ -35,9 +35,29 @@ public class JsonTest
 
     [TestMethod]
     [DataRow(JsonData.test_Nested)]
-    public async Task DeserializeJsonTest(string json)
+    public async Task DeserializeJsonByNewtonsoftTest(string json)
     {
         var J18nObject = await J18nParser.ParseJsonToJ18nRootAsync(json , CTS.Token);
         Assert.IsTrue(J18nObject?.Children().Count() == 10);
     }
+
+    [TestMethod]
+    [DataRow(JsonData.zh_CN , 8)]
+    [DataRow(JsonData.en_US , 8)]
+    [DataRow(JsonData.test_Nested , 10)]
+    public async Task DeserializeJsonByJ18nJointTest(string json , int childrenCount)
+    {
+        J18nJoint j18NJoint = new J18nJoint()
+        {
+            Index = 0 ,
+            RawText = json ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Key = "root" ,
+        };
+        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText);
+        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
+        Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
+    }
+
 }

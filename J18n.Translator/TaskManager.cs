@@ -58,5 +58,4 @@ public class TaskManager
         return await Task.FromResult<TResult?>(default);
     }
 
-
 }
