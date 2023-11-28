@@ -119,4 +119,30 @@ public class JsonTest
         j18NJoint.ParseRawText(false);
         Assert.IsTrue(j18NJoint.Children is null);
     }
+
+
+    [TestMethod]
+    [DataRow(JsonData.zh_CN , 8)]
+    [DataRow(JsonData.en_US , 8)]
+    [DataRow(JsonData.test_Nested , 10)]
+    public async Task DelayParseSelfRawTextTest(string json , int childrenCount)
+    {
+        J18nJoint j18NJoint = new J18nJoint()
+        {
+            Index = 0 ,
+            RawText = json ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Key = "root" ,
+        };
+        j18NJoint.ParseRawText(false);
+        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
+        Assert.IsTrue(j18NJoint.Children.All(c => c.Children is null));
+        var allExpanableNode = j18NJoint.Children.Where(c => c.Type != J18nJointType.String);
+        foreach(var item in allExpanableNode)
+        {
+            item.ParseRawText();
+        }
+        Assert.IsTrue(allExpanableNode.All(c => c.Children is not null));
+    }
 }

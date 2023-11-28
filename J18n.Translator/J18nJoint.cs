@@ -772,33 +772,3 @@ public class RawTextExchangArg : EventArgs
         Joint = joint;
     }
 }
-
-public class JsonDiffer
-{
-
-
-
-    public static JToken? DeserializeByPath(string originalJson , string itemPath)
-    {
-        return DeserializeByPathList(originalJson , new string[] { itemPath }).Values.SingleOrDefault();
-    }
-
-    public static Dictionary<string , JToken?> DeserializeByPathList(string originalJson , IEnumerable<string> itemsPath)
-    {
-        var selectedInstances = new Dictionary<string , JToken?>();
-        using(JsonTextReader reader = new JsonTextReader(new StringReader(originalJson)))
-        {
-            // 移动到指定路径
-            while(reader.Read())
-            {
-                if(itemsPath.Contains(reader.Path))
-                {
-                    // 在指定路径上开始解析
-                    JToken? selectedObject = JToken.ReadFrom(reader);
-                    selectedInstances[reader.Path] = selectedObject;
-                }
-            }
-        }
-        return selectedInstances;
-    }
-}
