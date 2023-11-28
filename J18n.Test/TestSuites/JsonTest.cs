@@ -55,9 +55,68 @@ public class JsonTest
             Comment = "The root" ,
             Key = "root" ,
         };
-        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText);
+        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText , true);
         Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
         Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
     }
 
+    [TestMethod]
+    [DataRow(JsonData.zh_CN , 8)]
+    [DataRow(JsonData.en_US , 8)]
+    [DataRow(JsonData.test_Nested , 10)]
+    public async Task DeserializeJsonByJ18nJointWithoutRecursiveTest(string json , int childrenCount)
+    {
+        J18nJoint j18NJoint = new J18nJoint()
+        {
+            Index = 0 ,
+            RawText = json ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Key = "root" ,
+        };
+        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText , false);
+        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
+        Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
+    }
+
+    [TestMethod]
+    [DataRow(JsonData.zh_CN , 8)]
+    [DataRow(JsonData.en_US , 8)]
+    [DataRow(JsonData.test_Nested , 10)]
+    public async Task ParseSelfRawTextTest(string json , int childrenCount)
+    {
+        J18nJoint j18NJoint = new J18nJoint()
+        {
+            Index = 0 ,
+            RawText = json ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Key = "root" ,
+        };
+        j18NJoint.ParseRawText(false);
+        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
+        Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
+
+        j18NJoint.ParseRawText(true);
+        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
+        Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
+    }
+
+    [TestMethod]
+    [DataRow(JsonData.zh_CN , 8)]
+    [DataRow(JsonData.en_US , 8)]
+    [DataRow(JsonData.test_Nested , 10)]
+    public async Task ParseSelfRawTextWithoutRawTextTest(string json , int childrenCount)
+    {
+        J18nJoint j18NJoint = new J18nJoint()
+        {
+            Index = 0 ,
+            //RawText = json ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Key = "root" ,
+        };
+        j18NJoint.ParseRawText(false);
+        Assert.IsTrue(j18NJoint.Children is null);
+    }
 }

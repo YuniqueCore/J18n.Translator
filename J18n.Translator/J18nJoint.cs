@@ -206,15 +206,24 @@ public class J18nJoint : ICloneable
         };
     }
 
-    public J18nJoint? ParseRawTextToChildren(string json)
+
+    public void ParseRawText(bool recursive = false)
+    {
+        var root = JsonConvert.DeserializeObject<JToken?>(RawText ?? string.Empty)?.Root;
+        ParseRawTextToChildren(root , recursive);
+    }
+
+    public J18nJoint? ParseRawTextToChildren(string json , bool recursive = false)
     {
         var root = JsonConvert.DeserializeObject<JToken?>(json)?.Root;
-        return ParseRawTextToChildren(root);
+        return ParseRawTextToChildren(root , recursive);
     }
 
     public J18nJoint? ParseRawTextToChildren(JToken? root , bool recursive = false)
     {
         if(root is null) return null;
+
+        RemoveAllChildren();
 
         switch(root.Type)
         {
@@ -644,7 +653,7 @@ public class J18nJoint : ICloneable
 
     public void RemoveAllChildren( )
     {
-        Children.Clear();
+        Children?.Clear();
         RaiseJointUpdatedEvent(this);
     }
 
@@ -761,5 +770,35 @@ public class RawTextExchangArg : EventArgs
         OldRawText = oldRawText;
         NewRawText = newRawText;
         Joint = joint;
+    }
+}
+
+public class JsonDiffer
+{
+
+
+
+    public static JToken? DeserializeByPath(string originalJson , string itemPath)
+    {
+        return DeserializeByPathList(originalJson , new string[] { itemPath }).Values.SingleOrDefault();
+    }
+
+    public static Dictionary<string , JToken?> DeserializeByPathList(string originalJson , IEnumerable<string> itemsPath)
+    {
+        var selectedInstances = new Dictionary<string , JToken?>();
+        using(JsonTextReader reader = new JsonTextReader(new StringReader(originalJson)))
+        {
+            // 移动到指定路径
+            while(reader.Read())
+            {
+                if(itemsPath.Contains(reader.Path))
+                {
+                    // 在指定路径上开始解析
+                    JToken? selectedObject = JToken.ReadFrom(reader);
+                    selectedInstances[reader.Path] = selectedObject;
+                }
+            }
+        }
+        return selectedInstances;
     }
 }
