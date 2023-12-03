@@ -38,7 +38,7 @@ public class JsonDiffer
                 IEnumerable<string> addedPropertiesPath = addedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName));
                 IEnumerable<string> removePropertiesPath = removedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName));
 
-                var addedTokensDict = JsonDiffer.DeserializeByPathList(jsonSection , addedPropertiesPath);
+                var addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
                 // !TODO
                 // 1. remove tokens according to removedPropertiesPath
                 // 2. add tokens according to addedTokensDict
@@ -62,7 +62,7 @@ public class JsonDiffer
                 IEnumerable<string> addedPropertiesPath = addedItems.Select(x => string.Join('.' , currentPath , $"[{x.ItemIndex}]"));
                 IEnumerable<string> removePropertiesPath = removedItems.Select(x => string.Join('.' , currentPath , $"[{x.ItemIndex}]"));
 
-                var addedTokensDict = JsonDiffer.DeserializeByPathList(jsonSection , addedPropertiesPath);
+                var addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
                 // !TODO
                 // 1. remove tokens according to removedPropertiesPath
                 // 2. add tokens according to addedTokensDict
@@ -81,10 +81,10 @@ public class JsonDiffer
 
     public static JToken? DeserializeByPath(string originalJson , string itemPath)
     {
-        return DeserializeByPathList(originalJson , new string[] { itemPath }).Values.SingleOrDefault();
+        return DeserializeByPath(originalJson , new string[] { itemPath }).Values.SingleOrDefault();
     }
 
-    public static Dictionary<string , JToken?> DeserializeByPathList(string originalJson , IEnumerable<string> itemsPath)
+    public static Dictionary<string , JToken?> DeserializeByPath(string originalJson , IEnumerable<string> itemsPath)
     {
         var selectedInstances = new Dictionary<string , JToken?>();
         using(JsonTextReader reader = new JsonTextReader(new StringReader(originalJson)))
@@ -92,14 +92,21 @@ public class JsonDiffer
             // 移动到指定路径
             while(reader.Read())
             {
+                if(selectedInstances.Count >= itemsPath.Count())
+                {
+                    break;
+                }
+
                 if(itemsPath.Contains(reader.Path))
                 {
                     // 在指定路径上开始解析
+                    var currentPath = reader.Path;
                     JToken? selectedObject = JToken.ReadFrom(reader);
-                    selectedInstances[reader.Path] = selectedObject;
+                    selectedInstances[currentPath] = selectedObject;
                 }
             }
         }
         return selectedInstances;
     }
+
 }

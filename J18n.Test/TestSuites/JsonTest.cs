@@ -1,5 +1,6 @@
 ﻿using J18n.Test.TestData.Json;
 using J18n.Translator;
+using Newtonsoft.Json.Linq;
 
 namespace J18n.Test.TestSuites;
 
@@ -37,7 +38,7 @@ public class JsonTest
     [DataRow(JsonData.test_Nested)]
     public async Task DeserializeJsonByNewtonsoftTest(string json)
     {
-        var J18nObject = await J18nParser.ParseJsonToJ18nRootAsync(json , CTS.Token);
+        var J18nObject = JObject.Parse(json);
         Assert.IsTrue(J18nObject?.Children().Count() == 10);
     }
 
