@@ -95,15 +95,7 @@ public class J18nJoint : ICloneable
 
     public string Path
     {
-        get
-        {
-            if(string.IsNullOrWhiteSpace(_path))
-            {
-                _path = GetPath(this);
-            }
-            return _path;
-        }
-
+        get => GetPath(this);
         private set => _path = value;
     }
     public string? Comment { get; set; }
@@ -186,10 +178,18 @@ public class J18nJoint : ICloneable
     {
         StringBuilder path = new();
         J18nJoint? current = joint;
-        while(current is not null)
+        //while(current is not null)
+        //{
+        //    path.Insert(0 , current.Key + ".");
+        //    current = current.Parent;
+        //}
+        if(joint?.Parent is not null)
         {
-            path.Insert(0 , current.Key + ".");
-            current = current.Parent;
+            path.Append(joint.Parent.Path + "." + joint.Key);
+        }
+        else
+        {
+            path.Append(joint?.Key);
         }
 
         return path.ToString().TrimEnd('.');
@@ -206,15 +206,24 @@ public class J18nJoint : ICloneable
         };
     }
 
-    public J18nJoint? ParseRawTextToChildren(string json)
+
+    public void ParseRawText(bool recursive = false)
+    {
+        var root = JsonConvert.DeserializeObject<JToken?>(RawText ?? string.Empty)?.Root;
+        ParseRawTextToChildren(root , recursive);
+    }
+
+    public J18nJoint? ParseRawTextToChildren(string json , bool recursive = false)
     {
         var root = JsonConvert.DeserializeObject<JToken?>(json)?.Root;
-        return ParseRawTextToChildren(root);
+        return ParseRawTextToChildren(root , recursive);
     }
 
     public J18nJoint? ParseRawTextToChildren(JToken? root , bool recursive = false)
     {
         if(root is null) return null;
+
+        RemoveAllChildren();
 
         switch(root.Type)
         {
@@ -269,7 +278,7 @@ public class J18nJoint : ICloneable
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jProperty.Value);
+                        joint.ParseRawTextToChildren(jProperty.Value , recursive);
                     }
                 }
                 else if(child is JValue jValue)
@@ -277,13 +286,13 @@ public class J18nJoint : ICloneable
                     joint = new J18nJoint()
                     {
                         Index = index ,
-                        Key = index.ToString() ,
+                        Key = $"[{index}]" ,
                         RawText = jValue?.Value.ToString() ,
                         Type = MapType(jValue?.Type) ,
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jValue);
+                        joint.ParseRawTextToChildren(jValue , recursive);
                     }
                 }
                 else if(child is JObject jObj)
@@ -297,7 +306,7 @@ public class J18nJoint : ICloneable
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jObj);
+                        joint.ParseRawTextToChildren(jObj , recursive);
                     }
                 }
 
@@ -323,7 +332,7 @@ public class J18nJoint : ICloneable
                 };
                 if(recursive)
                 {
-                    joint.ParseRawTextToChildren(jProperty.Value);
+                    joint.ParseRawTextToChildren(jProperty.Value , recursive);
                 }
                 return joint;
             });
@@ -447,9 +456,6 @@ public class J18nJoint : ICloneable
         {
             textExchangArg.Joint.RemoveAllChildren();
         }
-
-
-
     }
 
 
@@ -644,7 +650,7 @@ public class J18nJoint : ICloneable
 
     public void RemoveAllChildren( )
     {
-        Children.Clear();
+        Children?.Clear();
         RaiseJointUpdatedEvent(this);
     }
 
