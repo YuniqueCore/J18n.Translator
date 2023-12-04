@@ -19,6 +19,14 @@ public class JsonDiffer
         foreach(var diff in differences)
         {
 
+            // !TODO
+            // 1. get the path of the object and the type of the object in parallel way.
+            //    Such as Task.WaitAll
+            // 2. return the object and the type dictionary, (AddedProperties, RemovedProperties, ModifiedProperties)
+            // 3. AddedProperties, add the object to the path
+            //    RemovedProperties, remove the object from the path
+            //    ModifiedProperties, modify the object from the path
+
             if(diff is ObjectDiff ObjectDiff)
             {
                 // get the path to the object and full update
@@ -29,16 +37,10 @@ public class JsonDiffer
                 var removedProperties = ObjectDiff.Mismatches.Where(removed => removed.GetType().Equals(typeof(LeftOnlyProperty)))
                                                                                         .Select(removed => removed);
 
-                for(int i = 0; i < addedProperties.Count(); i++)
-                {
-                    var propertyName = addedProperties.ElementAt(i).PropertyName;
-                    var aa = JsonDiffer.DeserializeByPath(originalJson: jsonSection , propertyName);
-                }
+                IEnumerable<string> addedPropertiesPath = addedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName).Trim('.'));
+                IEnumerable<string> removePropertiesPath = removedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName).Trim('.'));
 
-                IEnumerable<string> addedPropertiesPath = addedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName));
-                IEnumerable<string> removePropertiesPath = removedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName));
-
-                var addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
+                Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
                 // !TODO
                 // 1. remove tokens according to removedPropertiesPath
                 // 2. add tokens according to addedTokensDict
@@ -52,17 +54,11 @@ public class JsonDiffer
                                                                                         .Select(added => added);
                 var removedItems = arrayDiff.Mismatches.Where(removed => removed.GetType().Equals(typeof(LeftOnlyItem)))
                                                                                         .Select(removed => removed);
-                for(int i = 0; i < addedItems.Count(); i++)
-                {
-                    var index = addedItems.ElementAt(i).ItemIndex;
-                    var itemPath = string.Join('.' , currentPath , $"[{index}]");
-                    var aa = JsonDiffer.DeserializeByPath(jsonSection , itemPath);
-                }
 
-                IEnumerable<string> addedPropertiesPath = addedItems.Select(x => string.Join('.' , currentPath , $"[{x.ItemIndex}]"));
-                IEnumerable<string> removePropertiesPath = removedItems.Select(x => string.Join('.' , currentPath , $"[{x.ItemIndex}]"));
+                IEnumerable<string> addedPropertiesPath = addedItems.Select((x , index) => $"{currentPath}[{index}]".Trim('.'));
+                IEnumerable<string> removePropertiesPath = removedItems.Select((x , index) => $"{currentPath}[{index}]".Trim('.'));
 
-                var addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
+                Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
                 // !TODO
                 // 1. remove tokens according to removedPropertiesPath
                 // 2. add tokens according to addedTokensDict
@@ -70,10 +66,14 @@ public class JsonDiffer
             else if(diff is ValueDiff valueDiff)
             {
                 // get the path of object and only update the value from left to right
+                var currentPath = diff.Path.TrimStart('$' , '.');
+                Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , new string[] { currentPath });
             }
             else if(diff is TypeDiff typeDiff)
             {
                 //get the path of object, full update.
+                var currentPath = diff.Path.TrimStart('$' , '.');
+                Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , new string[] { currentPath });
             }
 
         }

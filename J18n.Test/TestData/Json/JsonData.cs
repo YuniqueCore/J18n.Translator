@@ -202,3 +202,98 @@ public static class JsonData
         }
         """;
 }
+
+public static class JsonDiffData
+{
+
+    /// <summary>
+    /// 初始 JSON 数据
+    /// </summary>
+    public const string initialJson = @"{
+            ""description"": ""This is a randomly generated JSON data."",
+            ""nestedObject"": {
+                ""name"": ""tomtanze"",
+                ""age"": ""25"",
+                ""array"": [
+                ""item1"",
+                ""item2"",
+                ""item3""
+                ]
+            },
+            ""array"": [
+                ""item1"",
+                ""item2"",
+                ""item3""
+            ],
+            ""nestedArray"": [
+                [
+                    ""nestedArrayItem1"",
+                    ""nestedArrayItem2""
+                ],
+                {
+                    ""name"": ""Baidu"",
+                    ""age"": ""250""
+                }
+            ],
+            ""menuItems2"": [
+                ""Services"",
+                ""Home"",
+                ""Contact""
+            ]
+        }";
+
+    /// <summary>
+    /// 新的 JSON 数据
+    /// </summary>
+    public const string updatedJson = @"{
+            ""description"": ""This is a randomly generated JSON data."",
+            ""nestedObject"": {
+                ""name"": ""John Doe"",
+                ""age"": ""25"",
+                ""array"": {
+                ""item1"": ""value1"",
+                ""item2"": ""value1"",
+                ""item3"": ""value1""
+                },
+                ""nestedArray"": [
+                    {
+                        ""name"": ""John Doe"",
+                        ""age"": ""25""
+                    },
+                    {
+                        ""name"": ""John Doe2"",
+                        ""age"": ""250""
+                    }
+                ]
+            },
+            ""message"": ""Hello {{name}}! How are you today?"",
+            ""menuItems"": [
+                ""Home"",
+                ""Products"",
+                ""Services"",
+                ""Contact""
+            ],
+            ""array"": {
+                ""item1"": ""value1"",
+                ""item2"": ""value1"",
+                ""item3"": ""value1""
+            },
+            ""menuItems2"": [
+                ""Home"",
+                ""Products"",
+                ""Services"",
+                ""Contact""
+            ],
+            ""nestedArray"": [
+                    {
+                        ""name"": ""John Doe"",
+                        ""age"": ""25""
+                    },
+                    {
+                        ""name"": ""John Doe2"",
+                        ""age"": ""250""
+                    }
+                ]
+        }";
+
+}

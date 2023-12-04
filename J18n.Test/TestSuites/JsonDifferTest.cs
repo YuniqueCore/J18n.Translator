@@ -25,4 +25,13 @@ public class JsonDifferTest
         CollectionAssert.AllItemsAreNotNull(tokens);
         Assert.IsFalse(tokens.Any(kv => !kv.Key.EndsWith(((JProperty)kv.Value).Name)));
     }
+
+
+    [TestMethod]
+    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
+    public void ExtractInfoTest(string originalJson , string updatedJson)
+    {
+        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
+        JsonDiffer.ExtractInfo(differences , updatedJson);
+    }
 }
