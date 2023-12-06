@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Quibble.CSharp;
+using System.Text;
 using ArrayDiff = Quibble.CSharp.ArrayDiff;
 using Diff = Quibble.CSharp.Diff;
 using ObjectDiff = Quibble.CSharp.ObjectDiff;
@@ -11,13 +12,73 @@ namespace J18n.Translator;
 
 public class JsonDiffer
 {
+    public class DiffHandlerManager : IDisposable
+    {
+        public DiffHandlerManager(string jsonSection)
+        {
+            if(jsonSection is null)
+            {
+                throw new ArgumentNullException(nameof(jsonSection) , "JsonSection is null. The Updated JSON string is required.");
+            }
+            BaseDifferHandler.JsonSection = jsonSection;
+            DiffHandlers = [];
+        }
+
+        public List<IDiffHandler?>? DiffHandlers { get; private set; }
+
+        public IDiffHandler? GetDiffHandlerChain( )
+        {
+            var objD = new ObjectDiffHandler();
+            var arrayD = new ArrayDiffHandler();
+            var valueD = new ValueDiffHandler();
+            var typeD = new TypeDiffHandler();
+
+
+            objD.SetNext(arrayD)
+                .SetNext(valueD)
+                .SetNext(typeD);
+
+            DiffHandlers?.Add(objD);
+            return objD;
+        }
+
+        public void Dispose( )
+        {
+            BaseDifferHandler.JsonSection = null;
+            DiffHandlers = null;
+        }
+    }
+
     public class DiffResult
     {
         public Dictionary<string , JToken?>? UpdatedPropertiesDict { get; set; }
         public IEnumerable<string>? RemovedPropertiesPath { get; set; }
+        public override string ToString( )
+        {
+            var sb = new StringBuilder();
+            if(UpdatedPropertiesDict is not null)
+            {
+                sb.AppendLine("UpdatedProperties:");
+                for(int i = 0; i < UpdatedPropertiesDict.Count; i++)
+                {
+                    var kv = UpdatedPropertiesDict.ElementAt(i);
+                    sb.AppendLine($"\t {i}. {kv.Key}: {kv.Value}");
+                }
+            }
+            if(RemovedPropertiesPath is not null)
+            {
+                sb.AppendLine("RemovedProperties:");
+                for(int i = 0; i < RemovedPropertiesPath.Count(); i++)
+                {
+                    var path = RemovedPropertiesPath.ElementAt(i);
+                    sb.AppendLine($"\t {i}. {path}");
+                }
+            }
+            return sb.ToString();
+        }
     }
 
-    public interface IDiffHandler : IDisposable
+    public interface IDiffHandler : IDisposable, ICloneable
     {
         DiffResult? DiffResult { get; }
         static string? JsonSection { get; set; }
@@ -32,7 +93,7 @@ public class JsonDiffer
         protected Lazy<DiffResult?>? _diffResult { get; private set; } = new Lazy<DiffResult?>(( ) => new DiffResult());
         public static string? JsonSection { get; set; }
         public DiffResult? DiffResult => _diffResult?.Value;
-        public bool HandledOver { get; private set; } = false;
+        public bool HandledOver { get; protected set; } = false;
 
         public IDiffHandler SetNext(IDiffHandler next)
         {
@@ -74,29 +135,29 @@ public class JsonDiffer
             _next = null;
             JsonSection = null;
         }
-    }
 
-    public class DiffHandlerManager
-    {
-        public static IDiffHandler? DiffHandler { get; private set; }
-        public static IDiffHandler? GetDiffHandlerChain(string jsonSection)
+        public object Clone( )
         {
-            if(jsonSection is null)
+            BaseDifferHandler clonedHandler = (BaseDifferHandler)MemberwiseClone();
+
+            // 如果 _next 是一个类的实例，而不仅仅是接口
+            if(_next is not null && _next is ICloneable nextCloneable)
             {
-                throw new ArgumentNullException(nameof(jsonSection) , "JsonSection is null. The Updated JSON string is required.");
+                clonedHandler._next = (IDiffHandler)nextCloneable.Clone();
             }
-            var objD = new ObjectDiffHandler();
-            var arrayD = new ArrayDiffHandler();
-            var valueD = new ValueDiffHandler();
-            var typeD = new TypeDiffHandler();
 
-            BaseDifferHandler.JsonSection = jsonSection;
-            objD.SetNext(arrayD)
-                .SetNext(valueD)
-                .SetNext(typeD);
+            if(_diffResult != null)
+            {
+                clonedHandler._diffResult = new Lazy<DiffResult?>(( ) => new DiffResult
+                {
+                    UpdatedPropertiesDict = _diffResult.Value?.UpdatedPropertiesDict?
+                                            .ToDictionary(entry => entry.Key ,
+                                                        entry => entry.Value) ,
+                    RemovedPropertiesPath = _diffResult.Value?.RemovedPropertiesPath?.ToList()
+                });
+            }
 
-            DiffHandler = objD;
-            return objD;
+            return clonedHandler;
         }
     }
 
@@ -119,6 +180,7 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
                 SetDiffResult(addedTokensDict , removePropertiesPath);
+                HandledOver = true;
             }
         }
     }
@@ -141,6 +203,7 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
                 SetDiffResult(addedTokensDict , removePropertiesPath);
+                HandledOver = true;
             }
         }
     }
@@ -155,6 +218,7 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
                 SetDiffResult(updatedTokensDict , null);
+                HandledOver = true;
             }
         }
     }
@@ -169,6 +233,7 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
                 SetDiffResult(updatedTokensDict , null);
+                HandledOver = true;
             }
         }
     }

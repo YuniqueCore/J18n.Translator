@@ -33,6 +33,20 @@ public class JsonDifferTest
     {
         var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
         JsonDiffer.ExtractInfo(differences , updatedJson);
-        var aa = JsonDiffer.DiffHandlerManager.GetDiffHandlerChain(updatedJson);
+
+        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
+        {
+            var tasks = differences.AsParallel().Select(diff => TaskManager.RunTask(( ) =>
+            {
+                var diffHandler = diffHandlerManager.GetDiffHandlerChain();
+                diffHandler?.Handle(diff);
+                return diffHandler?.DiffResult;
+            } , CancellationToken.None)).ToArray();
+
+            Task.WaitAll(tasks , CancellationToken.None);
+            tasks.Select(t => t.Result).ToList().ForEach(Console.WriteLine);
+            int a = 0;
+        }
+        int c = 0;
     }
 }
