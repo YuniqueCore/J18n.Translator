@@ -185,7 +185,15 @@ public class J18nJoint : ICloneable
         //}
         if(joint?.Parent is not null)
         {
-            path.Append(joint.Parent.Path + "." + joint.Key);
+            if(joint.Parent.Type.Equals(J18nJointType.Array))
+            {
+                path.Append($"joint.Parent.Path[{joint.Key}]");
+            }
+            else
+            {
+                path.Append(joint.Parent.Path + "." + joint.Key);
+            }
+
         }
         else
         {

@@ -33,5 +33,6 @@ public class JsonDifferTest
     {
         var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
         JsonDiffer.ExtractInfo(differences , updatedJson);
+        var aa = JsonDiffer.DiffHandlerManager.GetDiffHandlerChain(updatedJson);
     }
 }
