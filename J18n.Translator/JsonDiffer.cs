@@ -49,8 +49,17 @@ public class JsonDiffer
         }
     }
 
+    public enum DiffType
+    {
+        ObjectDiff,
+        ArrayDiff,
+        ValueDiff,
+        TypeDiff
+    }
+
     public class DiffResult
     {
+        public DiffType DiffType { get; set; }
         public Dictionary<string , JToken?>? UpdatedPropertiesDict { get; set; }
         public IEnumerable<string>? RemovedPropertiesPath { get; set; }
         public override string ToString( )
@@ -114,8 +123,9 @@ public class JsonDiffer
 
         protected abstract void DiffInternalHandle(Diff unKnownDiff);
 
-        protected virtual void SetDiffResult(Dictionary<string , JToken?>? addedPropertiesDict , IEnumerable<string>? removedPaths)
+        protected virtual void SetDiffResult(DiffType diffType , Dictionary<string , JToken?>? addedPropertiesDict , IEnumerable<string>? removedPaths)
         {
+            DiffResult.DiffType = diffType;
             DiffResult.UpdatedPropertiesDict = addedPropertiesDict;
             DiffResult.RemovedPropertiesPath = removedPaths;
         }
@@ -179,7 +189,7 @@ public class JsonDiffer
 
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
-                SetDiffResult(addedTokensDict , removePropertiesPath);
+                SetDiffResult(DiffType.ObjectDiff , addedTokensDict , removePropertiesPath);
                 HandledOver = true;
             }
         }
@@ -202,7 +212,7 @@ public class JsonDiffer
 
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
-                SetDiffResult(addedTokensDict , removePropertiesPath);
+                SetDiffResult(DiffType.ArrayDiff , addedTokensDict , removePropertiesPath);
                 HandledOver = true;
             }
         }
@@ -217,7 +227,7 @@ public class JsonDiffer
                 var currentPath = diff.Path.TrimStart('$' , '.');
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
-                SetDiffResult(updatedTokensDict , null);
+                SetDiffResult(DiffType.ValueDiff , updatedTokensDict , null);
                 HandledOver = true;
             }
         }
@@ -232,95 +242,31 @@ public class JsonDiffer
                 var currentPath = diff.Path.TrimStart('$' , '.');
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
-                SetDiffResult(updatedTokensDict , null);
+                SetDiffResult(DiffType.TypeDiff , updatedTokensDict , null);
                 HandledOver = true;
             }
         }
     }
 
-
-
-    public static void ExtractInfo(IReadOnlyList<Diff>? differences , string jsonSection)
-    {
-        // left = old text, right = new text
-        if(differences is null)
-        {
-            return;
-        }
-
-        Dictionary<string , JToken?>? updatedPropertiesDict = null;
-        IEnumerable<string>? removedPropertiesPath = null;
-
-        List<Task> extractInfoTasks = new List<Task>();
-
-        foreach(var diff in differences)
-        {
-
-            // !TODO
-            // 1. get the path of the object and the type of the object in parallel way.
-            //    Such as Task.WaitAll
-            // 2. return the object and the type dictionary, (AddedProperties, RemovedProperties, ModifiedProperties)
-            // 3. AddedProperties, add the object to the path
-            //    RemovedProperties, remove the object from the path
-            //    ModifiedProperties, modify the object from the path
-
-            if(diff is ObjectDiff ObjectDiff)
-            {
-                // get the path to the object and full update
-                // but has Mismateches property, maybe can use it to modify the changed only
-                var currentPath = diff.Path.TrimStart('$' , '.');
-                var addedProperties = ObjectDiff.Mismatches.Where(added => added.GetType().Equals(typeof(RightOnlyProperty)))
-                                                                                        .Select(added => added);
-                var removedProperties = ObjectDiff.Mismatches.Where(removed => removed.GetType().Equals(typeof(LeftOnlyProperty)))
-                                                                                        .Select(removed => removed);
-
-                IEnumerable<string> addedPropertiesPath = addedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName).Trim('.'));
-                IEnumerable<string> removePropertiesPath = removedProperties.Select(x => string.Join('.' , currentPath , x.PropertyName).Trim('.'));
-
-                Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
-                // !TODO
-                // 1. remove tokens according to removedPropertiesPath
-                // 2. add tokens according to addedTokensDict
-            }
-            else if(diff is ArrayDiff arrayDiff)
-            {
-                // get the path to the object and full update
-                // but has Mismateches property, maybe can use it to modify the changed only
-                var currentPath = diff.Path.TrimStart('$' , '.');
-                var addedItems = arrayDiff.Mismatches.Where(added => added.GetType().Equals(typeof(RightOnlyItem)))
-                                                                                        .Select(added => added);
-                var removedItems = arrayDiff.Mismatches.Where(removed => removed.GetType().Equals(typeof(LeftOnlyItem)))
-                                                                                        .Select(removed => removed);
-
-                IEnumerable<string> addedPropertiesPath = addedItems.Select((x , index) => $"{currentPath}[{index}]".Trim('.'));
-                IEnumerable<string> removePropertiesPath = removedItems.Select((x , index) => $"{currentPath}[{index}]".Trim('.'));
-
-                Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , addedPropertiesPath);
-                // !TODO
-                // 1. remove tokens according to removedPropertiesPath
-                // 2. add tokens according to addedTokensDict
-            }
-            else if(diff is ValueDiff valueDiff)
-            {
-                // get the path of object and only update the value from left to right
-                var currentPath = diff.Path.TrimStart('$' , '.');
-                Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , new string[] { currentPath });
-            }
-            else if(diff is TypeDiff typeDiff)
-            {
-                //get the path of object, full update.
-                var currentPath = diff.Path.TrimStart('$' , '.');
-                Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(jsonSection , new string[] { currentPath });
-            }
-
-        }
-    }
-
+    /// <summary>
+    /// Deserialize Json string from specified path
+    /// </summary>
+    /// <param name="originalJson"></param>
+    /// <param name="itemPath">Item path</param>
+    /// <returns>JToken?</returns>
+    /// <exception cref="ArgumentNullException">The originalJson is null</exception>"
     public static JToken? DeserializeByPath(string originalJson , string itemPath)
     {
         return DeserializeByPath(originalJson , new string[] { itemPath }).Values.SingleOrDefault();
     }
 
+    /// <summary>
+    /// Deserialize Json string from specified path List
+    /// </summary>
+    /// <param name="originalJson"></param>
+    /// <param name="itemsPath">Item path list</param>
+    /// <returns>Dictionary[Item_path , JToken?]</returns>
+    /// <exception cref="ArgumentNullException">The originalJson is null</exception>
     public static Dictionary<string , JToken?> DeserializeByPath(string originalJson , IEnumerable<string> itemsPath)
     {
         var selectedInstances = new Dictionary<string , JToken?>();
@@ -345,5 +291,4 @@ public class JsonDiffer
         }
         return selectedInstances;
     }
-
 }
