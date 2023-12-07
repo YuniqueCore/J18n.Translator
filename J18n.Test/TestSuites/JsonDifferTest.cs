@@ -53,7 +53,7 @@ public class JsonDifferTest
                 return rst;
             } , CancellationToken.None)).ToArray();
 
-            Task.WaitAll(tasks , CancellationToken.None);
+            Task.WaitAll(tasks);
             tasks.Select(t => t.Result).ToList().ForEach((diffResult) =>
             {
                 Debug.WriteLine(diffResult);

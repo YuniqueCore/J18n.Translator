@@ -101,12 +101,6 @@ public class JsonDiffer
         }
     }
 
-
-    public interface IDiffHandlerReset
-    {
-        void Reset(IDiffHandler handler);
-    }
-
     public interface IDiffHandler : IDisposable, ICloneable
     {
         IDiffHandler? Next { get; }
@@ -259,6 +253,7 @@ public class JsonDiffer
         }
     }
 
+    #region Concrete Diff Handlers
     private class JsonDiffHandler : BaseDiffHandler
     {
         protected override bool DiffInternalHandle(Diff unKnownDiff)
@@ -347,6 +342,7 @@ public class JsonDiffer
             return false;
         }
     }
+    #endregion Concrete Diff Handlers
 
     /// <summary>
     /// Deserialize Json string from specified path
