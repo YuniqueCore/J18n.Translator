@@ -66,12 +66,12 @@ public class JsonDifferTest
             Assert.IsTrue(diffHandlerManager!.DiffHandlers!
                 .Where(handler =>
                 {
-                    return handler!.DiffResult is not null;
+                    return handler!.Next!.DiffResult is not null;
                 })
                 .All(handler =>
                 {
                     var IsNull = true;
-                    var next = handler?.Next;
+                    var next = handler?.Next!.Next;
                     while(next is not null)
                     {
                         IsNull &= next.DiffResult is null;

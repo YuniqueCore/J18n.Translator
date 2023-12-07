@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using J18n.Translator.Extensions;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Quibble.CSharp;
 using System.Text;
@@ -20,7 +21,7 @@ public class JsonDiffer
             {
                 throw new ArgumentNullException(nameof(jsonSection) , "JsonSection is null. The Updated JSON string is required.");
             }
-            BaseDifferHandler.JsonSection = jsonSection;
+            BaseDiffHandler.JsonSection = jsonSection;
             DiffHandlers = [];
         }
 
@@ -28,7 +29,7 @@ public class JsonDiffer
 
         public IDiffHandler? CreateDiffHandler(DiffType diffType)
         {
-            BaseDifferHandler? handler = diffType switch
+            BaseDiffHandler? handler = diffType switch
             {
                 DiffType.ObjectDiff => new ObjectDiffHandler(),
                 DiffType.ArrayDiff => new ArrayDiffHandler(),
@@ -57,7 +58,7 @@ public class JsonDiffer
 
         public void Dispose( )
         {
-            BaseDifferHandler.JsonSection = null;
+            BaseDiffHandler.JsonSection = null;
             DiffHandlers = null;
         }
     }
@@ -100,6 +101,12 @@ public class JsonDiffer
         }
     }
 
+
+    public interface IDiffHandlerReset
+    {
+        void Reset(IDiffHandler handler);
+    }
+
     public interface IDiffHandler : IDisposable, ICloneable
     {
         IDiffHandler? Next { get; }
@@ -110,21 +117,39 @@ public class JsonDiffer
         DiffResult? Handle(Diff diff);
     }
 
-    protected abstract class BaseDifferHandler : IDiffHandler
+    protected abstract class BaseDiffHandler : IDiffHandler
     {
-        private BaseDifferHandler? _next;
+        public event EventHandler<BoolStateChangedEventArgs>? HandledOverStateChanged;
+
+        private BaseDiffHandler? _next;
+        private bool _handledOver = false;
         protected Lazy<DiffResult?>? _diffResult { get; private set; } = new Lazy<DiffResult?>(( ) => new DiffResult() , LazyThreadSafetyMode.ExecutionAndPublication);
 
         public static string? JsonSection { get; set; }
         public DiffResult? DiffResult => _diffResult?.Value;
-        public bool HandledOver { get; protected set; } = false;
+        public bool HandledOver
+        {
+            get
+            {
+                return _handledOver;
+            }
+            protected set
+            {
+                if(value != _handledOver)
+                {
+                    _handledOver = value;
+                    RaiseHandledOverStateChanged();
+                }
+                ProcessPassDiffResult();
+            }
+        }
         public IDiffHandler? Next => _next;
         public IDiffHandler SetNext(IDiffHandler next)
         {
             if(next is null)
                 throw new ArgumentNullException(nameof(next) , "The next is null");
 
-            _next = (BaseDifferHandler?)next;
+            _next = (BaseDiffHandler?)next;
             return next;
         }
 
@@ -136,20 +161,14 @@ public class JsonDiffer
             }
         }
 
-        protected abstract void DiffInternalHandle(Diff unKnownDiff);
+        /// <summary>
+        /// Handle the unKnownDiff buisness logic
+        /// </summary>
+        /// <param name="unKnownDiff"></param>
+        /// <returns>if handle over return true else false</returns>
+        protected abstract bool DiffInternalHandle(Diff unKnownDiff);
 
-        private void RestoreDiffResult( )
-        {
-            _diffResult = null; // restore the diffResult to null
-            var nextHandler = _next;
-            while(nextHandler is not null)
-            {
-                nextHandler._diffResult = null; // restore the diffResult to null
-                nextHandler = nextHandler._next;
-            }
-        }
-
-        private void RaiseHandledOverStateChanged( )
+        private void ProcessPassDiffResult( )
         {
             if(HandledOver)
             {
@@ -167,6 +186,27 @@ public class JsonDiffer
             }
         }
 
+        private void RestoreDiffResult( )
+        {
+            _diffResult = null; // restore the diffResult to null
+            var nextHandler = _next;
+            while(nextHandler is not null)
+            {
+                nextHandler._diffResult = null; // restore the diffResult to null
+                nextHandler = nextHandler._next;
+            }
+        }
+
+        protected virtual void OnHandledOverStateChanged(BoolStateChangedEventArgs e)
+        {
+            HandledOverStateChanged?.Invoke(this , e);
+        }
+
+        private void RaiseHandledOverStateChanged( )
+        {
+            OnHandledOverStateChanged(new BoolStateChangedEventArgs(HandledOver));
+        }
+
         protected virtual void SetDiffResult(DiffType diffType , Dictionary<string , JToken?>? addedPropertiesDict , IEnumerable<string>? removedPaths)
         {
             DiffResult!.DiffType = diffType;
@@ -182,8 +222,7 @@ public class JsonDiffer
                 RestoreDiffResult();
                 return parentResult;
             }
-            DiffInternalHandle(diff);
-            RaiseHandledOverStateChanged();
+            HandledOver = DiffInternalHandle(diff);
             return _next is null ? DiffResult : _next.Handle(diff);
         }
 
@@ -197,12 +236,12 @@ public class JsonDiffer
 
         public object Clone( )
         {
-            BaseDifferHandler clonedHandler = (BaseDifferHandler)MemberwiseClone();
+            BaseDiffHandler clonedHandler = (BaseDiffHandler)MemberwiseClone();
 
             // 如果 _next 是一个类的实例，而不仅仅是接口
             if(_next is not null && _next is ICloneable nextCloneable)
             {
-                clonedHandler._next = (BaseDifferHandler?)nextCloneable.Clone();
+                clonedHandler._next = (BaseDiffHandler?)nextCloneable.Clone();
             }
 
             if(_diffResult != null)
@@ -220,17 +259,18 @@ public class JsonDiffer
         }
     }
 
-    private class JsonDiffHandler : BaseDifferHandler
+    private class JsonDiffHandler : BaseDiffHandler
     {
-        protected override void DiffInternalHandle(Diff unKnownDiff)
+        protected override bool DiffInternalHandle(Diff unKnownDiff)
         {
             ThrowNullException(unKnownDiff); // Check it once only
+            return false;
         }
     }
 
-    private class ObjectDiffHandler : BaseDifferHandler
+    private class ObjectDiffHandler : BaseDiffHandler
     {
-        protected override void DiffInternalHandle(Diff unKnownDiff)
+        protected override bool DiffInternalHandle(Diff unKnownDiff)
         {
             if(unKnownDiff is ObjectDiff diff)
             {
@@ -246,14 +286,15 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
                 SetDiffResult(DiffType.ObjectDiff , addedTokensDict , removePropertiesPath);
-                HandledOver = true;
+                return true;
             }
+            return false;
         }
     }
 
-    private class ArrayDiffHandler : BaseDifferHandler
+    private class ArrayDiffHandler : BaseDiffHandler
     {
-        protected override void DiffInternalHandle(Diff unKnownDiff)
+        protected override bool DiffInternalHandle(Diff unKnownDiff)
         {
             if(unKnownDiff is ArrayDiff diff)
             {
@@ -269,14 +310,15 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
                 SetDiffResult(DiffType.ArrayDiff , addedTokensDict , removePropertiesPath);
-                HandledOver = true;
+                return true;
             }
+            return false;
         }
     }
 
-    private class ValueDiffHandler : BaseDifferHandler
+    private class ValueDiffHandler : BaseDiffHandler
     {
-        protected override void DiffInternalHandle(Diff unKnownDiff)
+        protected override bool DiffInternalHandle(Diff unKnownDiff)
         {
             if(unKnownDiff is ValueDiff diff)
             {
@@ -284,14 +326,15 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
                 SetDiffResult(DiffType.ValueDiff , updatedTokensDict , null);
-                HandledOver = true;
+                return true;
             }
+            return false;
         }
     }
 
-    private class TypeDiffHandler : BaseDifferHandler
+    private class TypeDiffHandler : BaseDiffHandler
     {
-        protected override void DiffInternalHandle(Diff unKnownDiff)
+        protected override bool DiffInternalHandle(Diff unKnownDiff)
         {
             if(unKnownDiff is TypeDiff diff)
             {
@@ -299,8 +342,9 @@ public class JsonDiffer
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
                 SetDiffResult(DiffType.TypeDiff , updatedTokensDict , null);
-                HandledOver = true;
+                return true;
             }
+            return false;
         }
     }
 
