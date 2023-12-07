@@ -26,20 +26,33 @@ public class JsonDiffer
 
         public List<IDiffHandler?>? DiffHandlers { get; private set; }
 
+        public IDiffHandler? CreateDiffHandler(DiffType diffType)
+        {
+            BaseDifferHandler? handler = diffType switch
+            {
+                DiffType.ObjectDiff => new ObjectDiffHandler(),
+                DiffType.ArrayDiff => new ArrayDiffHandler(),
+                DiffType.ValueDiff => new ValueDiffHandler(),
+                DiffType.TypeDiff => new TypeDiffHandler(),
+                _ => null,
+            };
+            DiffHandlers?.Add(handler);
+            return handler;
+        }
+
         public IDiffHandler? GetDiffHandlerChain( )
         {
+            var jsonD = new JsonDiffHandler();
             var objD = new ObjectDiffHandler();
             var arrayD = new ArrayDiffHandler();
             var valueD = new ValueDiffHandler();
             var typeD = new TypeDiffHandler();
 
+            jsonD.SetNext(objD).SetNext(arrayD)
+                .SetNext(valueD).SetNext(typeD);
 
-            objD.SetNext(arrayD)
-                .SetNext(valueD)
-                .SetNext(typeD);
-
-            DiffHandlers?.Add(objD);
-            return objD;
+            DiffHandlers?.Add(jsonD);
+            return jsonD;
         }
 
         public void Dispose( )
@@ -89,27 +102,29 @@ public class JsonDiffer
 
     public interface IDiffHandler : IDisposable, ICloneable
     {
+        IDiffHandler? Next { get; }
         DiffResult? DiffResult { get; }
         static string? JsonSection { get; set; }
         bool HandledOver { get; }
         IDiffHandler SetNext(IDiffHandler next);
-        void Handle(Diff diff);
+        DiffResult? Handle(Diff diff);
     }
 
     protected abstract class BaseDifferHandler : IDiffHandler
     {
-        private IDiffHandler? _next;
-        protected Lazy<DiffResult?>? _diffResult { get; private set; } = new Lazy<DiffResult?>(( ) => new DiffResult());
+        private BaseDifferHandler? _next;
+        protected Lazy<DiffResult?>? _diffResult { get; private set; } = new Lazy<DiffResult?>(( ) => new DiffResult() , LazyThreadSafetyMode.ExecutionAndPublication);
+
         public static string? JsonSection { get; set; }
         public DiffResult? DiffResult => _diffResult?.Value;
         public bool HandledOver { get; protected set; } = false;
-
+        public IDiffHandler? Next => _next;
         public IDiffHandler SetNext(IDiffHandler next)
         {
             if(next is null)
                 throw new ArgumentNullException(nameof(next) , "The next is null");
 
-            _next = next;
+            _next = (BaseDifferHandler?)next;
             return next;
         }
 
@@ -123,19 +138,53 @@ public class JsonDiffer
 
         protected abstract void DiffInternalHandle(Diff unKnownDiff);
 
+        private void RestoreDiffResult( )
+        {
+            _diffResult = null; // restore the diffResult to null
+            var nextHandler = _next;
+            while(nextHandler is not null)
+            {
+                nextHandler._diffResult = null; // restore the diffResult to null
+                nextHandler = nextHandler._next;
+            }
+        }
+
+        private void RaiseHandledOverStateChanged( )
+        {
+            if(HandledOver)
+            {
+                var nextHandler = _next;
+                while(nextHandler is not null)
+                {
+                    nextHandler.HandledOver = true;
+                    nextHandler._diffResult = _diffResult; // pass the diffResult to next handler
+                    nextHandler = nextHandler._next;
+                }
+            }
+            else
+            {
+                _diffResult = null;
+            }
+        }
+
         protected virtual void SetDiffResult(DiffType diffType , Dictionary<string , JToken?>? addedPropertiesDict , IEnumerable<string>? removedPaths)
         {
-            DiffResult.DiffType = diffType;
+            DiffResult!.DiffType = diffType;
             DiffResult.UpdatedPropertiesDict = addedPropertiesDict;
             DiffResult.RemovedPropertiesPath = removedPaths;
         }
 
-        public void Handle(Diff diff)
+        public DiffResult? Handle(Diff diff)
         {
-            DiffInternalHandle(diff);
+            var parentResult = DiffResult;
             if(HandledOver)
-                return;
-            _next?.Handle(diff);
+            {
+                RestoreDiffResult();
+                return parentResult;
+            }
+            DiffInternalHandle(diff);
+            RaiseHandledOverStateChanged();
+            return _next is null ? DiffResult : _next.Handle(diff);
         }
 
         public void Dispose( )
@@ -153,7 +202,7 @@ public class JsonDiffer
             // 如果 _next 是一个类的实例，而不仅仅是接口
             if(_next is not null && _next is ICloneable nextCloneable)
             {
-                clonedHandler._next = (IDiffHandler)nextCloneable.Clone();
+                clonedHandler._next = (BaseDifferHandler?)nextCloneable.Clone();
             }
 
             if(_diffResult != null)
@@ -171,11 +220,18 @@ public class JsonDiffer
         }
     }
 
-    private class ObjectDiffHandler : BaseDifferHandler
+    private class JsonDiffHandler : BaseDifferHandler
     {
         protected override void DiffInternalHandle(Diff unKnownDiff)
         {
             ThrowNullException(unKnownDiff); // Check it once only
+        }
+    }
+
+    private class ObjectDiffHandler : BaseDifferHandler
+    {
+        protected override void DiffInternalHandle(Diff unKnownDiff)
+        {
             if(unKnownDiff is ObjectDiff diff)
             {
                 var currentPath = diff.Path.TrimStart('$' , '.');
