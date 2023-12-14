@@ -88,7 +88,7 @@ public class J18nJoint : ICloneable
                 };
 
                 _rawText = value;
-                RaiseRawTextChangedEvent(eventArg);
+                RaiseRawTextChangeEvent(eventArg);
             }
         }
     }
@@ -113,20 +113,20 @@ public class J18nJoint : ICloneable
     public event EventHandler<J18nJoint>? OnJointUpdated;
     public event EventHandler<J18nJoint>? OnChildrenUpdated;
 
-    protected virtual void RaiseJointUpdatedEvent(J18nJoint updatedJoint)
+    protected virtual void RaiseJointUpdateEvent(J18nJoint updatedJoint)
     {
         // 检查是否有订阅者，如果有，则触发事件
         OnJointUpdating?.Invoke(this , updatedJoint);
         UpdateModificationTime(updatedJoint);
         OnJointUpdated?.Invoke(this , updatedJoint);
     }
-    protected virtual void RaiseChildrenUpdatedEvent(J18nJoint parentJoint)
+    protected virtual void RaiseChildrenUpdateEvent(J18nJoint parentJoint)
     {
         OnChildrenUpdating?.Invoke(this , parentJoint);
         ReOrderChildrenIndex(parentJoint);
         OnChildrenUpdated?.Invoke(this , parentJoint);
     }
-    protected virtual void RaiseRawTextChangedEvent(RawTextExchangArg textExchangArg)
+    protected virtual void RaiseRawTextChangeEvent(RawTextExchangArg textExchangArg)
     {
         OnRawTextChanging?.Invoke(this , textExchangArg);
         UpdateChildrenFromRawText(textExchangArg);
@@ -486,8 +486,8 @@ public class J18nJoint : ICloneable
         SetParent(childrenList);
         Children ??= new();
         Children = Children.Concat(childrenList).ToHashSet();
-        RaiseChildrenUpdatedEvent(this);
-        RaiseJointUpdatedEvent(this);
+        RaiseChildrenUpdateEvent(this);
+        RaiseJointUpdateEvent(this);
     }
 
     public async Task AddChildrenAsync(IEnumerable<J18nJoint> children , CancellationToken? ctsToken = null)
@@ -496,8 +496,8 @@ public class J18nJoint : ICloneable
         var childrenList = children.ToList();
         await SetParentAsync(childrenList);
         Children = Children.Concat(childrenList).ToHashSet();
-        RaiseChildrenUpdatedEvent(this);
-        RaiseJointUpdatedEvent(this);
+        RaiseChildrenUpdateEvent(this);
+        RaiseJointUpdateEvent(this);
     }
 
     public J18nJoint? GetJoint(Func<J18nJoint , bool> findOldChild)
@@ -590,10 +590,10 @@ public class J18nJoint : ICloneable
             ThrowDuplicatedException(new[] { newChild } , new[] { oldChild._key });
             oldJoint = oldChild.ShadowClone();
             updateAction.Invoke(oldChild , newChild);
-            RaiseJointUpdatedEvent(oldChild);
+            RaiseJointUpdateEvent(oldChild);
             if(newChild.Index != oldChild.Index)
             {
-                RaiseChildrenUpdatedEvent(this);
+                RaiseChildrenUpdateEvent(this);
             }
             return true;
         }
@@ -632,7 +632,7 @@ public class J18nJoint : ICloneable
                     joint.Index--;
                 }
             }
-            RaiseJointUpdatedEvent(this);
+            RaiseJointUpdateEvent(this);
             return true;
         }
 
@@ -658,7 +658,7 @@ public class J18nJoint : ICloneable
                     joint.Index--;
                     await Task.Yield(); // 确保异步任务能够在不同的线程上执行
                 });
-            RaiseJointUpdatedEvent(this);
+            RaiseJointUpdateEvent(this);
             await Task.WhenAll(tasks);
             return (true, removedJoint);
         }
@@ -669,7 +669,7 @@ public class J18nJoint : ICloneable
     public void RemoveAllChildren( )
     {
         Children?.Clear();
-        RaiseJointUpdatedEvent(this);
+        RaiseJointUpdateEvent(this);
     }
 
     public J18nJoint ShadowClone( )
