@@ -64,7 +64,7 @@ public class J18nJoint : ICloneable
         get
         {
             J18nJoint? next = null;
-            if(this.Index + 1 <= this.Parent?.Children.Count)
+            if(this.Index + 1 <= this.Parent?.Children?.Count)
             {
                 next = this.Parent?.GetJoint(this.Index + 1);
             }
@@ -103,7 +103,11 @@ public class J18nJoint : ICloneable
     public DateTime CreationTime { get; private set; } = DateTime.UtcNow;
     public DateTime ModificationTime { get; private set; } = DateTime.UtcNow;
     public J18nJointType Type { get; set; }
-    [NotNull] public HashSet<J18nJoint>? Children { get; private set; } = null;
+    public HashSet<J18nJoint>? Children { get; private set; } = null;
+
+    public event EventHandler<RawTextExchangArg>? OnRawTextChanging;
+    public event EventHandler<J18nJoint>? OnJointUpdating;
+    public event EventHandler<J18nJoint>? OnChildrenUpdating;
 
     public event EventHandler<RawTextExchangArg>? OnRawTextChanged;
     public event EventHandler<J18nJoint>? OnJointUpdated;
@@ -112,14 +116,20 @@ public class J18nJoint : ICloneable
     protected virtual void RaiseJointUpdatedEvent(J18nJoint updatedJoint)
     {
         // 检查是否有订阅者，如果有，则触发事件
+        OnJointUpdating?.Invoke(this , updatedJoint);
+        UpdateModificationTime(updatedJoint);
         OnJointUpdated?.Invoke(this , updatedJoint);
     }
     protected virtual void RaiseChildrenUpdatedEvent(J18nJoint parentJoint)
     {
+        OnChildrenUpdating?.Invoke(this , parentJoint);
+        ReOrderChildrenIndex(parentJoint);
         OnChildrenUpdated?.Invoke(this , parentJoint);
     }
     protected virtual void RaiseRawTextChangedEvent(RawTextExchangArg textExchangArg)
     {
+        OnRawTextChanging?.Invoke(this , textExchangArg);
+        UpdateChildrenFromRawText(textExchangArg);
         OnRawTextChanged?.Invoke(this , textExchangArg);
     }
 
@@ -158,20 +168,20 @@ public class J18nJoint : ICloneable
 
     public void InitEvents( )
     {
-        OnJointUpdated += (sender , joint) =>
-        {
-            UpdateModificationTime(joint);
-        };
+        //OnJointUpdated += (sender , joint) =>
+        //{
 
-        OnChildrenUpdated += (sender , joint) =>
-        {
-            ReOrderChildrenIndex(joint);
-        };
+        //};
 
-        OnRawTextChanged += (sender , arg) =>
-        {
-            UpdateChildrenFromRawText(arg);
-        };
+        //OnChildrenUpdated += (sender , joint) =>
+        //{
+
+        //};
+
+        //OnRawTextChanged += (sender , arg) =>
+        //{
+
+        //};
     }
 
     private static string GetPath(J18nJoint? joint)
@@ -187,7 +197,7 @@ public class J18nJoint : ICloneable
         {
             if(joint.Parent.Type.Equals(J18nJointType.Array))
             {
-                path.Append($"joint.Parent.Path[{joint.Key}]");
+                path.Append($"{joint.Parent.Path}{joint.Key}");
             }
             else
             {

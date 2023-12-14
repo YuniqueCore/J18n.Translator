@@ -164,25 +164,26 @@ public class JsonTest
             Key = "root" ,
         };
         j18NJoint.ParseRawText(false);
-        Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
-        Assert.IsTrue(j18NJoint.Children.All(c => c.Children is null));
-        var allExpanableNode = j18NJoint.Children.Where(c => c.Type != J18nJointType.String);
-        foreach(var item in allExpanableNode)
+        Assert.IsTrue(j18NJoint.Children?.Count == childrenCount , $"The Children count {j18NJoint.Children?.Count} should equals {childrenCount}");
+        Assert.IsTrue(j18NJoint.Children?.All(c => c.Children is null) , $"Children should be null when recursive parse is false.");
+        var allExpanableNode = j18NJoint.Children?.Where(c => c.Type != J18nJointType.String);
+        foreach(var item in allExpanableNode!)
         {
             item.ParseRawText(true);
         }
-        var arrayItem = j18NJoint.Children.Where(c => c.Type.Equals(J18nJointType.Array));
-        var allRight = arrayItem.All(c =>
+        var arrayItem = j18NJoint.Children?.Where(c => c.Type.Equals(J18nJointType.Array));
+        var allRight = arrayItem?.All(c =>
         {
             bool rightPath = true;
-            for(int i = 0; i < c.Children.Count; i++)
+            for(int i = 0; i < c.Children?.Count; i++)
             {
-                rightPath = c.Children.ElementAt(i).Path == $"{c.Path}.[{i}]" && rightPath;
+                // The [index] array items path was handled in the nested ParseArray method of J18nJoint.ParseRawText(bool recursive) method.
+                rightPath = c.Children.ElementAt(i).Path == $"{c.Path}[{i}]" && rightPath;
             }
             return rightPath;
         });
-        Assert.IsTrue(allRight);
+        Assert.IsTrue(allRight.HasValue && allRight.Value , $"All Array children Items path should end with the formatted string: ...[index], are all match rule? {allRight}");
         //j18NJoint.Children.ElementAt(3).ParseRawText();
-        Assert.IsTrue(allExpanableNode.All(c => c.Children is not null));
+        Assert.IsTrue(allExpanableNode.All(c => c.Children is not null) , "All expandable node should have children.");
     }
 }
