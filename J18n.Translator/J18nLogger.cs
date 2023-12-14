@@ -1,10 +1,87 @@
 ﻿using Serilog;
+using System.Diagnostics;
 using System.Text;
 
 namespace J18n.Translator;
 
+public static class J18nLoggerExtensions
+{
+    public static void WriteOrLog(this IJ18nLogger logger , LogLevel logLevel , string message , Exception? exception = null)
+    {
+        if(logger.IsEnabled(logLevel))
+        {
+            if(exception is null)
+            {
+                logger.Write(logLevel , message);
+                return;
+            }
+
+            logger.Write(logLevel , exception , message);
+        }
+        else
+        {
+            var msg = $"[Debug] Message: {message}\nException: {exception}";
+            Debug.WriteLine(msg);
+        }
+    }
+
+    public static void DebugOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Debug , message , exception);
+    }
+
+    public static void InfoOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Info , message , exception);
+    }
+
+    public static void WarnOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Warn , message , exception);
+    }
+
+    public static void ErrorOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Error , message , exception);
+    }
+
+    public static void FatalOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Fatal , message , exception);
+    }
+
+    public static void VerboseOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
+    {
+        WriteOrLog(logger , LogLevel.Verbose , message , exception);
+    }
+}
+
+public enum LogLevel
+{
+    Debug,
+    Info,
+    Warn,
+    Error,
+    Fatal,
+    Verbose
+}
+
 public class J18nLogger : IJ18nLogger
 {
+    static Serilog.Events.LogEventLevel LogLevelMapping(LogLevel logLevel)
+    {
+        return logLevel switch
+        {
+            LogLevel.Debug => Serilog.Events.LogEventLevel.Debug,
+            LogLevel.Info => Serilog.Events.LogEventLevel.Information,
+            LogLevel.Warn => Serilog.Events.LogEventLevel.Warning,
+            LogLevel.Error => Serilog.Events.LogEventLevel.Error,
+            LogLevel.Fatal => Serilog.Events.LogEventLevel.Fatal,
+            LogLevel.Verbose => Serilog.Events.LogEventLevel.Verbose,
+            _ => Serilog.Events.LogEventLevel.Information,
+        };
+    }
+
     private static ILogger? _logger;
     public static volatile object _lock = new object();
     public static ILogger Logger
@@ -43,71 +120,64 @@ public class J18nLogger : IJ18nLogger
             .CreateLogger();
     }
 
-    public void Log(string messageTemplate)
+    public bool IsEnabled(LogLevel logLevel)
     {
-        Information(messageTemplate);
+        return Logger.IsEnabled(LogLevelMapping(logLevel));
     }
 
-    public void Log(string messageTemplate , params object?[]? propertyValues)
+    public void Write(LogLevel logLevel , string message)
     {
-        Information(messageTemplate , propertyValues);
+        Logger.Write(LogLevelMapping(logLevel) , message);
     }
 
-    public void Information(string messageTemplate)
+    public void Write(LogLevel logLevel , Exception exception , string message)
     {
-        _logger.Information(messageTemplate);
+        Logger.Write(LogLevelMapping(logLevel) , exception , message);
     }
 
-    public void Information(string messageTemplate , params object?[]? propertyValues)
+    public void Write(LogLevel logLevel , string messageTemplate , params object?[]? propertyValues)
     {
-        _logger.Information(messageTemplate , propertyValues);
+        Logger.Write(LogLevelMapping(logLevel) , messageTemplate , propertyValues);
     }
 
-    public void Warning(string messageTemplate)
+    public void Write(LogLevel logLevel , Exception exception , string messageTemplate , params object?[] propertyValues)
     {
-        _logger.Warning(messageTemplate);
+        Logger.Write(LogLevelMapping(logLevel) , exception , messageTemplate , propertyValues);
     }
 
-    public void Verbose(string messageTemplate)
+    public void Debug(string message)
     {
-        _logger.Verbose(messageTemplate);
+        Logger.Debug(message);
     }
 
-    public void Error(string messageTemplate)
+    public void Info(string message)
     {
-        _logger.Error(messageTemplate);
+        Logger.Information(message);
     }
 
-    public void Fatal(string messageTemplate)
+    public void Warning(string message)
     {
-        _logger.Fatal(messageTemplate);
+        Logger.Warning(message);
     }
 
-    public void Debug(string messageTemplate)
+    public void Error(string message)
     {
-        _logger.Debug(messageTemplate);
+        Logger.Error(message);
+    }
+
+    public void Fatal(string message)
+    {
+        Logger.Fatal(message);
+    }
+
+    public void Verbose(string message)
+    {
+        Logger.Verbose(message);
     }
 
     public void Debug(Exception? exception , string messageTemplate , params object?[]? propertyValues)
     {
-        _logger.Debug(exception , messageTemplate , propertyValues);
-    }
-
-    /// <summary>
-    /// If exception is null log otherwise debug
-    /// </summary>
-    /// <param name="logMsg"></param>
-    /// <param name="exception"></param>
-    public void DebugOrLog(string logMsg , Exception? exception)
-    {
-        if(exception is null)
-        {
-            Debug(exception , logMsg);
-        }
-        else
-        {
-            Log(logMsg);
-        }
+        Write(LogLevel.Debug , exception , messageTemplate , propertyValues);
     }
 
     public void CloseAndFlush( )
@@ -127,22 +197,24 @@ public class J18nLogger : IJ18nLogger
     {
         return this;
     }
+
 }
 
 public interface IJ18nLogger
 {
     IJ18nLogger GetLogger( );
-    void Log(string messageTemplate);
-    void Log(string messageTemplate , params object?[]? propertyValues);
-    void Information(string messageTemplate);
-    void Information(string messageTemplate , params object?[]? propertyValues);
-    void Warning(string messageTemplate);
-    void Verbose(string messageTemplate);
-    void Error(string messageTemplate);
-    void Fatal(string messageTemplate);
-    void Debug(string messageTemplate);
+    bool IsEnabled(LogLevel logLevel);
+    void Write(LogLevel logLevel , string message);
+    void Write(LogLevel logLevel , Exception exception , string message);
+    void Write(LogLevel logLevel , string messageTemplate , params object?[]? propertyValues);
+    void Write(LogLevel logLevel , Exception exception , string messageTemplate , params object?[] propertyValues);
+    void Debug(string message);
+    void Info(string message);
+    void Warning(string message);
+    void Error(string message);
+    void Fatal(string message);
+    void Verbose(string message);
     void Debug(Exception? exception , string messageTemplate , params object?[]? propertyValues);
-    void DebugOrLog(string logMsg , Exception? exception);
     void CloseAndFlush( );
     ValueTask CloseAndFlushAsync( );
 }

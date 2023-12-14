@@ -81,20 +81,20 @@ public class JsonDiffer
             var sb = new StringBuilder();
             if(UpdatedPropertiesDict is not null)
             {
-                sb.AppendLine("UpdatedProperties:");
+                sb.AppendLine("Updated Properties:");
                 for(int i = 0; i < UpdatedPropertiesDict.Count; i++)
                 {
                     var kv = UpdatedPropertiesDict.ElementAt(i);
-                    sb.AppendLine($"\t {i}. {kv.Key}: {kv.Value}");
+                    sb.AppendLine($"\t ({i}). {kv.Key}: {kv.Value}");
                 }
             }
             if(RemovedPropertiesPath is not null)
             {
-                sb.AppendLine("RemovedProperties:");
+                sb.AppendLine("Removed Properties:");
                 for(int i = 0; i < RemovedPropertiesPath.Count(); i++)
                 {
                     var path = RemovedPropertiesPath.ElementAt(i);
-                    sb.AppendLine($"\t {i}. {path}");
+                    sb.AppendLine($"\t ({i}). {path}");
                 }
             }
             return sb.ToString();
