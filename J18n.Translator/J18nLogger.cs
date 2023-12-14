@@ -6,6 +6,17 @@ namespace J18n.Translator;
 
 public static class J18nLoggerExtensions
 {
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Conditionally writes or logs a message with the specified log level and optional exception.</item>
+    /// <item>If the logger is enabled for the specified log level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="logLevel">The log level of the message.</param>
+    /// <param name="message">The log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the log message.</param>
     public static void WriteOrLog(this IJ18nLogger logger , LogLevel logLevel , string message , Exception? exception = null)
     {
         if(logger.IsEnabled(logLevel))
@@ -25,31 +36,91 @@ public static class J18nLoggerExtensions
         }
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the [Debug] log level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void DebugOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Debug , message , exception);
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the Debug [Info] level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void InfoOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Info , message , exception);
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the Debug [Warn] level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void WarnOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Warn , message , exception);
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the Debug [Error] level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void ErrorOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Error , message , exception);
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the Debug [Fatal] level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void FatalOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Fatal , message , exception);
     }
 
+    /// <summary>
+    /// <list type="bullet">
+    /// <item>Writes or logs a debug-level message with optional exception details.</item>
+    /// <item>If the logger is enabled for the Debug [Verbose] level, it uses the logger's Write method.</item>
+    /// <item>Otherwise, it outputs the message and exception details to the Debug output.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="logger">The logger implementing the IJ18nLogger interface.</param>
+    /// <param name="message">The debug-level log message to be written or logged.</param>
+    /// <param name="exception">Optional. The exception associated with the debug message.</param>
     public static void VerboseOrLog(this IJ18nLogger logger , string message , Exception? exception = null)
     {
         WriteOrLog(logger , LogLevel.Verbose , message , exception);
