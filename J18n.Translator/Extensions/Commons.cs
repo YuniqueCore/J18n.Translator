@@ -4,6 +4,25 @@ namespace J18n.Translator.Extensions;
 
 public static class Commons
 {
+
+    /// <summary>
+    /// Repeatedly executes a specified condition delegate until it returns false or the timeout is reached.
+    /// </summary>
+    /// <typeparam name="T">Type of the return value of the delegate.</typeparam>
+    /// <param name="condition">Delegate returning true to continue or false to interrupt.</param>
+    /// <param name="timeout">Maximum execution time in seconds, default is 60 seconds.</param>
+    public static void DoWhileUntilOrTimeout(Func<bool> condition , int timeout = 60)
+    {
+        // Continue looping while the condition is true or until the timeout is reached
+        DateTime endTime = DateTime.Now.AddSeconds(timeout);
+        do
+        {
+            // Exit the loop if the condition returns false
+            if(!condition()) break;
+        } while(DateTime.Now < endTime);
+    }
+
+
     /// <summary>
     /// return nullableList is null ? "" : string.Join(separator , nullableList);
     /// </summary>
@@ -48,4 +67,5 @@ public static class Commons
         }
         return text;
     }
+
 }

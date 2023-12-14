@@ -125,69 +125,12 @@ public class JsonDifferTest
 
                 var diff = differences[i];
                 var result = valueDiffHandler?.Handle(diff);
-                Debug.WriteLine(result);
-            }
-
-        }
-    }
-
-
-    [TestMethod]
-    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
-    public void ValueDiffTest(string originalJson , string updatedJson)
-    {
-        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
-
-        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
-        {
-
-            for(int i = 0; i < differences.Count; i++)
-            {
-                var valueDiffHandler = diffHandlerManager.CreateDiffHandler(JsonDiffer.DiffType.ValueDiff);
-
-                var diff = differences[i];
-                var result = valueDiffHandler?.Handle(diff);
-                Debug.WriteLine(result);
-            }
-
-        }
-    }
-
-    [TestMethod]
-    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
-    public void TypeDiffTest(string originalJson , string updatedJson)
-    {
-        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
-
-        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
-        {
-
-            for(int i = 0; i < differences.Count; i++)
-            {
-                var valueDiffHandler = diffHandlerManager.CreateDiffHandler(JsonDiffer.DiffType.TypeDiff);
-
-                var diff = differences[i];
-                var result = valueDiffHandler?.Handle(diff);
-                Debug.WriteLine(result);
-            }
-        }
-    }
-
-    [TestMethod]
-    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
-    public void ObjectDiffTest(string originalJson , string updatedJson)
-    {
-        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
-
-        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
-        {
-
-            for(int i = 0; i < differences.Count; i++)
-            {
-                var valueDiffHandler = diffHandlerManager.CreateDiffHandler(JsonDiffer.DiffType.ObjectDiff);
-
-                var diff = differences[i];
-                var result = valueDiffHandler?.Handle(diff);
+                if(result?.DiffType == type)
+                {
+                    Assert.IsNull((type.Equals(JsonDiffer.DiffType.ValueDiff) || type.Equals(JsonDiffer.DiffType.TypeDiff))
+                                            ? result.RemovedPropertiesPath : null);
+                    Assert.IsNotNull(result.UpdatedPropertiesDict);
+                }
                 Debug.WriteLine(result);
             }
 
