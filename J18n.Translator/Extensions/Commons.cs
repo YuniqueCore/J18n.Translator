@@ -24,6 +24,47 @@ public static class Commons
 
 
     /// <summary>
+    /// Returns the original IEnumerable if it is not null and contains elements; otherwise, returns an empty IEnumerable.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the IEnumerable.</typeparam>
+    /// <param name="list">The input IEnumerable to check.</param>
+    /// <returns>
+    /// The original IEnumerable if it is not null and contains elements; otherwise, an empty IEnumerable.
+    /// </returns>
+    public static IEnumerable<T>? NullOrNotEmpty<T>(this IEnumerable<T> list) where T : class
+    {
+        return list is not null && list.Any() ? list : null;
+    }
+
+    /// <summary>
+    /// Returns the original IEnumerable of KeyValuePairs if it is not null and contains elements; otherwise, returns an empty IEnumerable.
+    /// </summary>
+    /// <typeparam name="TKey">The type of keys in the KeyValuePairs.</typeparam>
+    /// <typeparam name="TValue">The type of values in the KeyValuePairs.</typeparam>
+    /// <param name="pairs">The input IEnumerable of KeyValuePairs to check.</param>
+    /// <returns>
+    /// The original IEnumerable of KeyValuePairs if it is not null and contains elements; otherwise, an empty IEnumerable.
+    /// </returns>
+    public static IEnumerable<KeyValuePair<TKey , TValue>>? NullOrNotEmpty<TKey, TValue>(this IEnumerable<KeyValuePair<TKey , TValue>> pairs)
+    {
+        return pairs is not null && pairs.Any() ? pairs : null;
+    }
+
+    /// <summary>
+    /// Returns the original Dictionary if it is not null and contains elements; otherwise, returns an empty Dictionary.
+    /// </summary>
+    /// <typeparam name="TKey">The type of keys in the Dictionary.</typeparam>
+    /// <typeparam name="TValue">The type of values in the Dictionary.</typeparam>
+    /// <param name="dictionary">The input Dictionary to check.</param>
+    /// <returns>
+    /// The original Dictionary if it is not null and contains elements; otherwise, an empty Dictionary.
+    /// </returns>
+    public static Dictionary<TKey , TValue>? NullOrNotEmpty<TKey, TValue>(this Dictionary<TKey , TValue>? dictionary)
+    {
+        return dictionary is not null && dictionary.Count > 0 ? dictionary : null;
+    }
+
+    /// <summary>
     /// return nullableList is null ? "" : string.Join(separator , nullableList);
     /// </summary>
     /// <param name="nullableList"></param>

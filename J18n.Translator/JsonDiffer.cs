@@ -280,7 +280,7 @@ public class JsonDiffer
 
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
-                SetDiffResult(DiffType.ObjectDiff , addedTokensDict , removePropertiesPath);
+                SetDiffResult(DiffType.ObjectDiff , addedTokensDict.NullOrNotEmpty() , removePropertiesPath.NullOrNotEmpty());
                 return true;
             }
             return false;
@@ -304,7 +304,7 @@ public class JsonDiffer
 
                 Dictionary<string , JToken?>? addedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , addedPropertiesPath);
 
-                SetDiffResult(DiffType.ArrayDiff , addedTokensDict , removePropertiesPath);
+                SetDiffResult(DiffType.ArrayDiff , addedTokensDict.NullOrNotEmpty() , removePropertiesPath.NullOrNotEmpty());
                 return true;
             }
             return false;
@@ -320,7 +320,7 @@ public class JsonDiffer
                 var currentPath = diff.Path.TrimStart('$' , '.');
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
-                SetDiffResult(DiffType.ValueDiff , updatedTokensDict , null);
+                SetDiffResult(DiffType.ValueDiff , updatedTokensDict.NullOrNotEmpty() , null);
                 return true;
             }
             return false;
@@ -336,7 +336,7 @@ public class JsonDiffer
                 var currentPath = diff.Path.TrimStart('$' , '.');
                 Dictionary<string , JToken?>? updatedTokensDict = JsonDiffer.DeserializeByPath(JsonSection! , new string[] { currentPath });
 
-                SetDiffResult(DiffType.TypeDiff , updatedTokensDict , null);
+                SetDiffResult(DiffType.TypeDiff , updatedTokensDict.NullOrNotEmpty() , null);
                 return true;
             }
             return false;
@@ -386,5 +386,42 @@ public class JsonDiffer
             }
         }
         return selectedInstances;
+    }
+
+
+    /// <summary>
+    /// Removes the specified JSON element at the given target path from the original JToken.
+    /// </summary>
+    /// <param name="originalJToken">The original JToken representing a JSON structure.</param>
+    /// <param name="targetPath">The target path indicating the location of the element to be removed.</param>
+    public static void RemoveProperty(JToken originalJToken , string targetPath)
+    {
+        RemoveProperties(originalJToken , new[] { targetPath });
+    }
+
+    /// <summary>
+    /// Removes the specified JSON elements at the given target paths from the original JToken.
+    /// </summary>
+    /// <param name="originalJToken">The original JToken representing a JSON structure.</param>
+    /// <param name="targetPaths">The target paths indicating the location of the elements to be removed.</param>
+    public static void RemoveProperties(JToken originalJToken , IEnumerable<string> targetPaths)
+    {
+        if(originalJToken is null || targetPaths is null)
+        {
+            return;
+        }
+        foreach(string targetPath in targetPaths)
+        {
+            // Select the JToken at the specified target path
+            JToken? tokenToRemove = originalJToken.SelectToken(targetPath);
+
+            // Check if the selected token has a parent
+            // If it doesn't have a parent, it may be the root node or already detached from its parent
+            if(tokenToRemove != null && tokenToRemove.Parent != null)
+            {
+                // Remove the token from its parent
+                tokenToRemove.Remove();
+            }
+        }
     }
 }

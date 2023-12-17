@@ -137,4 +137,49 @@ public class JsonDifferTest
         }
     }
 
+
+
+    [TestMethod]
+    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
+    public void DiffRemovedPropertiesOnJTokenUnitTest(string originalJson , string updatedJson)
+    {
+        // According to the removed properites path to delete the properties in the original json
+        // 1. get the removed properties path
+        // 2. remove the properties in the original JToken
+        // Some potantial problems:
+        // 1. the removed properties path is not in the original json
+        var originalJToken = JToken.Parse(originalJson).Root;
+        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
+
+        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
+        {
+            var results = new List<JsonDiffer.DiffResult?>();
+            for(int i = 0; i < differences.Count; i++)
+            {
+                var valueDiffHandler = diffHandlerManager.GetDiffHandlerChain();
+
+                var diff = differences[i];
+                var result = valueDiffHandler?.Handle(diff);
+                results.Add(result);
+            }
+            var removedProperties = results.Select(r => r?.RemovedPropertiesPath)
+                .Where(p => p is not null)
+                .SelectMany(p => p!)
+                .Distinct();
+            Assert.IsNotNull(removedProperties);
+            Assert.IsTrue(removedProperties.Any());
+            Assert.IsTrue(originalJToken.SelectToken("menuItems2[0]")?.Value<string>()?.Equals("Services") ,
+                "The first item in array is Services currently.");
+
+            JsonDiffer.RemoveProperties(originalJToken , removedProperties);
+
+            Assert.IsTrue(originalJToken.SelectToken("menuItems2[0]")?.Value<string>()?.Equals("Home") ,
+                "The first item in array is Home now. The previous one was deleted successfully.");
+
+        }
+    }
+
+
+
+
 }
