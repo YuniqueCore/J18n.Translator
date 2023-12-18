@@ -392,28 +392,28 @@ public class JsonDiffer
     /// <summary>
     /// Removes the specified JSON element at the given target path from the original JToken.
     /// </summary>
-    /// <param name="originalJToken">The original JToken representing a JSON structure.</param>
+    /// <param name="parent">The original JToken representing a JSON structure.</param>
     /// <param name="targetPath">The target path indicating the location of the element to be removed.</param>
-    public static void RemoveProperty(JToken originalJToken , string targetPath)
+    public static void RemoveProperty(JToken parent , string targetPath)
     {
-        RemoveProperties(originalJToken , new[] { targetPath });
+        RemoveProperties(parent , new[] { targetPath });
     }
 
     /// <summary>
     /// Removes the specified JSON elements at the given target paths from the original JToken.
     /// </summary>
-    /// <param name="originalJToken">The original JToken representing a JSON structure.</param>
+    /// <param name="parent">The original JToken representing a JSON structure.</param>
     /// <param name="targetPaths">The target paths indicating the location of the elements to be removed.</param>
-    public static void RemoveProperties(JToken originalJToken , IEnumerable<string> targetPaths)
+    public static void RemoveProperties(JToken parent , IEnumerable<string> targetPaths)
     {
-        if(originalJToken is null || targetPaths is null)
+        if(parent is null || targetPaths is null)
         {
             return;
         }
         foreach(string targetPath in targetPaths)
         {
             // Select the JToken at the specified target path
-            JToken? tokenToRemove = originalJToken.SelectToken(targetPath);
+            JToken? tokenToRemove = parent.SelectToken(targetPath);
 
             // Check if the selected token has a parent
             // If it doesn't have a parent, it may be the root node or already detached from its parent
@@ -424,4 +424,6 @@ public class JsonDiffer
             }
         }
     }
+
+
 }

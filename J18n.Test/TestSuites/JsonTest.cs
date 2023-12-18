@@ -56,7 +56,7 @@ public class JsonTest
             Comment = "The root" ,
             Key = "root" ,
         };
-        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText , true);
+        j18NJoint.UpdateRawTextAndChildren(j18NJoint.RawText , true);
         Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
         Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
     }
@@ -75,7 +75,7 @@ public class JsonTest
             Comment = "The root" ,
             Key = "root" ,
         };
-        j18NJoint.ParseRawTextToChildren(j18NJoint.RawText , false);
+        j18NJoint.UpdateRawTextAndChildren(j18NJoint.RawText , false);
         Assert.IsTrue(j18NJoint.Children.Count() == childrenCount);
         Assert.AreEqual(j18NJoint.Children.Any(c => !c.Parent.Equals(j18NJoint)) , false);
     }

@@ -7,6 +7,91 @@ using System.Text;
 
 namespace J18n.Translator;
 
+
+public static class J18nJointExtension
+{
+    /// <summary>
+    /// Gets a sub-joint within the hierarchy by following the specified sub-joint path.
+    /// </summary>
+    /// <param name="joint">The root J18nJoint from which to start the search.</param>
+    /// <param name="subJointPath">The dot-separated path indicating the location of the desired sub-joint.</param>
+    /// <returns>The sub-joint found at the specified path; otherwise, null if the path or sub-joint is not found.</returns>
+    /// <exception cref="ArgumentException">Thrown when the sub-joint path does not start with '.'.</exception>
+    public static J18nJoint? GetSubJointByPath(this J18nJoint? joint , string subJointPath)
+    {
+        if(joint is null) return null;
+
+        if(!subJointPath.StartsWith('.'))
+            throw new ArgumentException($"Sub-Joint Path must start with '.'." , nameof(subJointPath));
+
+        subJointPath = subJointPath.TrimStart('.');
+
+        var pathKeys = ParsePath(subJointPath);
+
+        J18nJoint? subJoint = joint;
+
+        foreach(var key in pathKeys)
+        {
+            subJoint = subJoint?.Children?.FirstOrDefault(c => c.Key.Equals(key));
+
+            if(subJoint is null)
+            {
+                // Handle the case when the key is not found
+                return null;
+            }
+        }
+
+        return subJoint;
+    }
+
+    /// <summary>
+    /// Parses a hierarchical path that may include dot notation ('.') and square brackets ('[]').
+    /// </summary>
+    /// <param name="path">The path to be parsed.</param>
+    /// <returns>An enumerable of individual keys extracted from the path.</returns>
+    private static IEnumerable<string> ParsePath(string path)
+    {
+        List<string> keys = new List<string>();
+        int index = 0;
+
+        while(index < path.Length)
+        {
+            if(path[index] == '[')
+            {
+                // Find the closing bracket for array index notation
+                int closingBracketIndex = path.IndexOf(']' , index);
+                if(closingBracketIndex == -1)
+                {
+                    throw new ArgumentException("Invalid path format: missing ']'.");
+                }
+
+                // Extract the array index and add it as a key
+                string arrayIndex = path.Substring(index + 1 , closingBracketIndex - index - 1);
+                keys.Add(arrayIndex);
+                index = closingBracketIndex + 1;
+            }
+            else
+            {
+                // Find the dot for dot notation
+                int dotIndex = path.IndexOf('.' , index);
+                if(dotIndex == -1)
+                {
+                    // If no more dots, add the remaining part of the path as a key
+                    keys.Add(path.Substring(index));
+                    break;
+                }
+
+                // Extract the key and add it
+                keys.Add(path.Substring(index , dotIndex - index));
+                index = dotIndex + 1;
+            }
+        }
+
+        return keys;
+    }
+
+}
+
 public enum J18nJointType
 {
     Object = 0,
@@ -228,16 +313,16 @@ public class J18nJoint : ICloneable
     public void ParseRawText(bool recursive = false)
     {
         var root = JsonConvert.DeserializeObject<JToken?>(RawText ?? string.Empty)?.Root;
-        ParseRawTextToChildren(root , recursive);
+        UpdateRawTextAndChildren(root , recursive , false);
     }
 
-    public J18nJoint? ParseRawTextToChildren(string json , bool recursive = false)
+    public J18nJoint? UpdateRawTextAndChildren(string json , bool recursive = false)
     {
         var root = JsonConvert.DeserializeObject<JToken?>(json)?.Root;
-        return ParseRawTextToChildren(root , recursive);
+        return UpdateRawTextAndChildren(root , recursive , true);
     }
 
-    public J18nJoint? ParseRawTextToChildren(JToken? root , bool recursive = false)
+    public J18nJoint? UpdateRawTextAndChildren(JToken? root , bool recursive = false , bool updateRawText = false)
     {
         if(root is null) return null;
 
@@ -255,6 +340,11 @@ public class J18nJoint : ICloneable
                 //case JTokenType.Object:
                 ParseObject(root , recursive);
                 break;
+        }
+
+        if(updateRawText)
+        {
+            RawText = root.ToString(Formatting.Indented);
         }
 
         return this;
@@ -296,7 +386,7 @@ public class J18nJoint : ICloneable
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jProperty.Value , recursive);
+                        joint.UpdateRawTextAndChildren(jProperty.Value , recursive);
                     }
                 }
                 else if(child is JValue jValue)
@@ -310,7 +400,7 @@ public class J18nJoint : ICloneable
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jValue , recursive);
+                        joint.UpdateRawTextAndChildren(jValue , recursive);
                     }
                 }
                 else if(child is JObject jObj)
@@ -324,7 +414,7 @@ public class J18nJoint : ICloneable
                     };
                     if(recursive)
                     {
-                        joint.ParseRawTextToChildren(jObj , recursive);
+                        joint.UpdateRawTextAndChildren(jObj , recursive);
                     }
                 }
 
@@ -350,7 +440,7 @@ public class J18nJoint : ICloneable
                 };
                 if(recursive)
                 {
-                    joint.ParseRawTextToChildren(jProperty.Value , recursive);
+                    joint.UpdateRawTextAndChildren(jProperty.Value , recursive);
                 }
                 return joint;
             });
@@ -360,6 +450,7 @@ public class J18nJoint : ICloneable
 
     private IEnumerable<string> GetDuplicateKeysFromChildren(IEnumerable<J18nJoint> children , IEnumerable<string>? ignoreKeys = null)
     {
+
         var duplicateKeys = children
             .GroupBy(joint => joint._key , StringComparer.Ordinal)
             .Where(group => group.Count() > 1 && (ignoreKeys == null || !ignoreKeys.Contains(group.Key)))
@@ -481,6 +572,10 @@ public class J18nJoint : ICloneable
 
     public void AddChildren(IEnumerable<J18nJoint> children)
     {
+        if(children is null || !children.Any())
+        {
+            return;
+        }
         ThrowDuplicatedException(children);
         var childrenList = children.ToList();
         SetParent(childrenList);
