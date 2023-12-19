@@ -2,11 +2,14 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace J18n.Translator;
+[assembly: InternalsVisibleTo("J18n.Test")]
 
+namespace J18n.Translator;
 
 public static class J18nJointExtension
 {
@@ -49,45 +52,50 @@ public static class J18nJointExtension
     /// </summary>
     /// <param name="path">The path to be parsed.</param>
     /// <returns>An enumerable of individual keys extracted from the path.</returns>
-    private static IEnumerable<string> ParsePath(string path)
+
+    internal static IEnumerable<string> ParsePath(string path)
     {
         List<string> keys = new List<string>();
         int index = 0;
 
         while(index < path.Length)
         {
-            if(path[index] == '[')
+            int openBraketIndex = path.IndexOf('[' , index);
+            int dotIndex = path.IndexOf('.' , index);
+
+            if(openBraketIndex == -1 && dotIndex == -1)
+            {
+                // If no more dots or brackets, add the remaining part of the path as a key
+                keys.Add(path.Substring(index));
+                break;
+            }
+
+            if(openBraketIndex == -1 || (dotIndex != -1 && dotIndex < openBraketIndex))
+            {
+                // Find the dot for dot notation
+                // Extract the key and add it
+                keys.Add(path.Substring(index , dotIndex - index));
+                index = dotIndex + 1;
+            }
+            else
             {
                 // Find the closing bracket for array index notation
                 int closingBracketIndex = path.IndexOf(']' , index);
                 if(closingBracketIndex == -1)
                 {
-                    throw new ArgumentException("Invalid path format: missing ']'.");
+                    throw new ArgumentException("Invalid path format: missing ']'." , nameof(path));
                 }
 
                 // Extract the array index and add it as a key
-                string arrayIndex = path.Substring(index + 1 , closingBracketIndex - index - 1);
+                string arrayName = path.Substring(index , openBraketIndex - index);
+                string arrayIndex = path.Substring(openBraketIndex , closingBracketIndex - openBraketIndex + 1);
+                keys.Add(arrayName);
                 keys.Add(arrayIndex);
                 index = closingBracketIndex + 1;
             }
-            else
-            {
-                // Find the dot for dot notation
-                int dotIndex = path.IndexOf('.' , index);
-                if(dotIndex == -1)
-                {
-                    // If no more dots, add the remaining part of the path as a key
-                    keys.Add(path.Substring(index));
-                    break;
-                }
-
-                // Extract the key and add it
-                keys.Add(path.Substring(index , dotIndex - index));
-                index = dotIndex + 1;
-            }
         }
 
-        return keys;
+        return keys.Where(k => !string.IsNullOrWhiteSpace(k));
     }
 
 }
@@ -417,6 +425,21 @@ public class J18nJoint : ICloneable
                         joint.UpdateRawTextAndChildren(jObj , recursive);
                     }
                 }
+                else if(child is JArray jArray)
+                {
+                    joint = new J18nJoint()
+                    {
+                        Index = index ,
+                        //Key = jArray.Path ,
+                        Key = $"[{index}]" ,
+                        RawText = jArray.ToString(Formatting.Indented) ,
+                        Type = MapType(jArray?.Type) ,
+                    };
+                    if(recursive)
+                    {
+                        joint.UpdateRawTextAndChildren(jArray , recursive);
+                    }
+                }
 
                 return joint;
             });
@@ -576,6 +599,12 @@ public class J18nJoint : ICloneable
         {
             return;
         }
+        var listc = new List<J18nJoint>(children);
+        foreach(var item in children)
+        {
+            Debug.WriteLine(item);
+        }
+
         ThrowDuplicatedException(children);
         var childrenList = children.ToList();
         SetParent(childrenList);

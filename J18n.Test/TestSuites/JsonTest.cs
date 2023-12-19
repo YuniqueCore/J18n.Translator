@@ -186,4 +186,34 @@ public class JsonTest
         //j18NJoint.Children.ElementAt(3).ParseRawText();
         Assert.IsTrue(allExpanableNode.All(c => c.Children is not null) , "All expandable node should have children.");
     }
+
+
+
+
+
+    [TestMethod]
+    [DataRow(nameof(CommonTestData.parsePathToKeysDatas))]
+    public void ParsePathFromStringTest(string dataSource)
+    {
+        foreach(var item in CommonTestData.parsePathToKeysDatas)
+        {
+            var path = item.JointPath.TrimStart('.');
+            var keys = item.Keys;
+
+            var result = J18nJointExtension.ParsePath(path);
+            for(int i = 0; i < keys.Length; i++)
+            {
+                Assert.AreEqual(keys[i] , result.ElementAt(i) ,
+                    $"expected key: {keys[i]} should equal actual key {result.ElementAt(i)}");
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 }
