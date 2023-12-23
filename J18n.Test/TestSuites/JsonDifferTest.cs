@@ -187,7 +187,7 @@ public class JsonDifferTest
         // 1. get the removed properties path
         // 2. remove the properties in the original JToken
         // Some potantial problems:
-        // 1. the removed properties path is not in the original json
+        // 3. the removed properties path is not in the original json
         var originalJ18n = new J18nJoint()
         {
             Key = "root" ,
@@ -216,38 +216,18 @@ public class JsonDifferTest
                 .Distinct();
             Assert.IsNotNull(removedProperties);
             Assert.IsTrue(removedProperties.Any());
-            Assert.IsTrue(originalJ18n.GetSubJointByPath(".menuItems2[0]")?.RawText?.Equals("Services") ,
+            Assert.IsTrue(condition: originalJ18n.GetSubJointByPath(".menuItems2[0]")?.RawText?.Equals("Services") ,
                 "The first item in array is Services currently.");
 
-            RemoveProperties(originalJ18n , removedProperties);
+            var removeJoints = originalJ18n.RemoveProperties(removedProperties);
+
+            Assert.IsNotNull(removeJoints);
+            Assert.IsTrue(removeJoints.Count() == 1);
+            Assert.IsTrue(removeJoints.ElementAt(0).Path.EndsWith(".menuItems2[0]") ,
+                $"The removed Joints only has one item, and the path of the item is {removeJoints.ElementAt(0).Path}");
 
             Assert.IsTrue(originalJ18n.GetSubJointByPath(".menuItems2[0]")?.RawText?.Equals("Home") ,
                 "The first item in array is Home now. The previous one was deleted successfully.");
-
         }
-    }
-
-    public static IEnumerable<J18nJoint> RemoveProperties(J18nJoint parent , IEnumerable<string> subPaths)
-    {
-        if(parent is null || subPaths is null)
-        {
-            return Enumerable.Empty<J18nJoint>();
-        }
-
-        List<J18nJoint> removedJoints = new List<J18nJoint>();
-
-        foreach(var path in subPaths)
-        {
-            J18nJoint? j18NJoint = parent.GetSubJointByPath(path);
-
-            if(j18NJoint is not null)
-            {
-                J18nJoint? removedJoint = null;
-                j18NJoint.Parent?.RemoveChild(j18NJoint.Key , out removedJoint);
-                removedJoints.Add(removedJoint);
-            }
-        }
-
-        return removedJoints;
     }
 }
