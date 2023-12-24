@@ -13,19 +13,29 @@ namespace J18n.Translator;
 
 public static class J18nJointExtension
 {
+    /// <summary>
+    /// Removes specified sub-joint from the given <see cref="J18nJoint"/> parent.
+    /// </summary>
+    /// <param name="parent">The parent <see cref="J18nJoint"/> from which to remove sub-joint.</param>
+    /// <param name="subPath">An <see cref="IEnumerable{T}"/> of strings representing the paths of sub-joint to be removed.</param>
+    /// <returns>An <see cref="J18nJoint"/> object that were removed from the parent.</returns>
+    public static J18nJoint? RemoveSubJointByPath(this J18nJoint parent , string subPath)
+    {
+        return parent.RemoveSubJointsByPaths(new[] { subPath }).FirstOrDefault();
+    }
 
     /// <summary>
-    /// Removes specified sub-properties from the given <see cref="J18nJoint"/> parent.
+    /// Removes specified sub-joints from the given <see cref="J18nJoint"/> parent.
     /// </summary>
-    /// <param name="parent">The parent <see cref="J18nJoint"/> from which to remove sub-properties.</param>
-    /// <param name="subPaths">An <see cref="IEnumerable{T}"/> of strings representing the paths of sub-properties to be removed.</param>
+    /// <param name="parent">The parent <see cref="J18nJoint"/> from which to remove sub-joints.</param>
+    /// <param name="subPaths">An <see cref="IEnumerable{T}"/> of strings representing the paths of sub-joints to be removed.</param>
     /// <returns>An <see cref="IEnumerable{T}"/> of <see cref="J18nJoint"/> objects that were removed from the parent.</returns>
     /// <remarks>
     /// This method iterates through the provided sub-paths, retrieves the corresponding <see cref="J18nJoint"/> objects,
     /// and removes them from the parent. The removed joints are returned in an enumerable collection.
     /// If either the parent or the subPaths parameter is null, an empty collection is returned.
     /// </remarks>
-    public static IEnumerable<J18nJoint> RemoveProperties(this J18nJoint parent , IEnumerable<string> subPaths)
+    public static IEnumerable<J18nJoint> RemoveSubJointsByPaths(this J18nJoint parent , IEnumerable<string> subPaths)
     {
         if(parent is null || subPaths is null)
         {
@@ -159,10 +169,14 @@ public class J18nJoint : ICloneable
     //private HashSet<int>? childrenIndexes => this.Children?.Select(c => c.Index).ToHashSet();
     private string? _rawText;
     private string _path;
-#pragma warning disable IDE1006 // 命名样式
-    private string _key { get; set; }
-#pragma warning restore IDE1006 // 命名样式
-    [NotNull]
+    private string? _comment;
+    private string? _description;
+    private J18nJointType _type;
+    private HashSet<J18nJoint>? _children = null;
+    private J18nJoint? _parent;
+    private string _key;
+    private int _index;
+
     public string Key
     {
         get { return _key; }
@@ -179,10 +193,25 @@ public class J18nJoint : ICloneable
                 throw new ArgumentNullException(value , "Key value cannot be null or empty");
             }
 
-            _key = value;
+            if(_key != value)
+            {
+                _key = value;
+                RaiseJointUpdateEvent(this);
+            }
         }
     }
-    public J18nJoint? Parent { get; private set; }
+    public J18nJoint? Parent
+    {
+        get => _parent;
+        private set
+        {
+            if(_parent != value)
+            {
+                _parent = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
+    }
     public J18nJoint? Last
     {
         get
@@ -207,7 +236,24 @@ public class J18nJoint : ICloneable
             return next;
         }
     }
-    public int Index { get; set; }
+    public int Index
+    {
+        get => _index;
+        set
+        {
+            if(value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(Index) ,
+                    $"Index should start from 0. Shouldn't a negative number. Please check the value: {value}");
+            }
+
+            if(_index != value)
+            {
+                _index = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
+    }
     public string? RawText
     {
         get => _rawText;
@@ -224,21 +270,70 @@ public class J18nJoint : ICloneable
 
                 _rawText = value;
                 RaiseRawTextChangeEvent(eventArg);
+                RaiseJointUpdateEvent(this);
             }
         }
     }
-
     public string Path
     {
         get => GetPath(this);
-        private set => _path = value;
+        private set
+        {
+            if(_path != value)
+            {
+                _path = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
     }
-    public string? Comment { get; set; }
-    public string? Description { get; set; }
+    public string? Comment
+    {
+        get => _comment;
+        set
+        {
+            if(_comment != value)
+            {
+                _comment = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
+    }
+    public string? Description
+    {
+        get => _description;
+        set
+        {
+            if(_description != value)
+            {
+                _description = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
+    }
     public DateTime CreationTime { get; private set; } = DateTime.UtcNow;
     public DateTime ModificationTime { get; private set; } = DateTime.UtcNow;
-    public J18nJointType Type { get; set; }
-    public HashSet<J18nJoint>? Children { get; private set; } = null;
+    public J18nJointType Type
+    {
+        get => _type;
+        set
+        {
+            if(_type != value)
+            {
+                _type = value;
+                RaiseJointUpdateEvent(this);
+            }
+        }
+    }
+    public HashSet<J18nJoint>? Children
+    {
+        get => _children;
+        private set
+        {
+            _children = value;
+            RaiseJointUpdateEvent(this);
+            RaiseChildrenUpdateEvent(this);
+        }
+    }
 
     public event EventHandler<RawTextExchangArg>? OnRawTextChanging;
     public event EventHandler<J18nJoint>? OnJointUpdating;
@@ -250,6 +345,7 @@ public class J18nJoint : ICloneable
 
     protected virtual void RaiseJointUpdateEvent(J18nJoint updatedJoint)
     {
+
         // 检查是否有订阅者，如果有，则触发事件
         OnJointUpdating?.Invoke(this , updatedJoint);
         UpdateModificationTime(updatedJoint);
@@ -275,13 +371,8 @@ public class J18nJoint : ICloneable
         InitEvents();
     }
 
-    public J18nJoint(
-        string key ,
-        string rawText ,
-        J18nJointType type ,
-        string comment = "" ,
-        string description = ""
-    )
+    public J18nJoint(string key , string rawText , J18nJointType type ,
+        string comment = "" , string description = "")
     {
         Key = key;
         RawText = rawText;
@@ -291,13 +382,8 @@ public class J18nJoint : ICloneable
         InitEvents();
     }
 
-    public J18nJoint(
-        int index ,
-        string rawText ,
-        J18nJointType type ,
-        string comment = "" ,
-        string description = ""
-    )
+    public J18nJoint(int index , string rawText , J18nJointType type ,
+        string comment = "" , string description = "")
     {
         Index = index;
         RawText = rawText;
@@ -307,14 +393,8 @@ public class J18nJoint : ICloneable
         InitEvents();
     }
 
-    public J18nJoint(
-        int index ,
-        string key ,
-        string rawText ,
-        J18nJointType type ,
-        string comment = "" ,
-        string description = ""
-    )
+    public J18nJoint(int index , string key , string rawText ,
+        J18nJointType type , string comment = "" , string description = "")
     {
         Index = index;
         Key = key;
@@ -384,6 +464,11 @@ public class J18nJoint : ICloneable
 
     public void ParseRawText(bool recursive = false)
     {
+
+        //var text = RawText is null ? string.Empty :
+        //    RawText.StartsWith('{') && RawText.EndsWith('}') ?
+        //    RawText : string.Format("{{{0}}}" , RawText);
+
         var root = JsonConvert.DeserializeObject<JToken?>(RawText ?? string.Empty)?.Root;
         UpdateRawTextAndChildren(root , recursive , false);
     }
@@ -394,11 +479,9 @@ public class J18nJoint : ICloneable
         return UpdateRawTextAndChildren(root , recursive , true);
     }
 
-    public J18nJoint? UpdateRawTextAndChildren(
-        JToken? root ,
+    public J18nJoint? UpdateRawTextAndChildren(JToken? root ,
         bool recursive = false ,
-        bool updateRawText = false
-    )
+        bool updateRawText = false)
     {
         if(root is null)
             return null;
@@ -637,8 +720,15 @@ public class J18nJoint : ICloneable
 
     private static void UpdateModificationTime(J18nJoint? updatedJoint)
     {
+
         J18nJoint? current = updatedJoint;
         var modifiedTime = DateTime.UtcNow;
+
+        // If the modification time is within 3 seconds, ignore it.
+        if((modifiedTime - current.ModificationTime) <= TimeSpan.FromSeconds(3))
+        {
+            return;
+        }
         while(current is not null)
         {
             current.ModificationTime = modifiedTime;
@@ -658,10 +748,8 @@ public class J18nJoint : ICloneable
                 // 2. Sort children with the same index by creation time, key, raw text, and type
                 var groupedChildren = sortedChildren
                     .GroupBy(c => c.Index)
-                    .SelectMany(
-                        group =>
-                            group
-                                .OrderBy(c => c.CreationTime)
+                    .SelectMany(group =>
+                            group.OrderBy(c => c.CreationTime)
                                 .ThenBy(c => c.Key)
                                 .ThenBy(c => c.RawText)
                                 .ThenBy(c => c.Type)
@@ -708,10 +796,8 @@ public class J18nJoint : ICloneable
         RaiseJointUpdateEvent(this);
     }
 
-    public async Task AddChildrenAsync(
-        IEnumerable<J18nJoint> children ,
-        CancellationToken? ctsToken = null
-    )
+    public async Task AddChildrenAsync(IEnumerable<J18nJoint> children ,
+        CancellationToken? ctsToken = null)
     {
         ThrowDuplicatedException(children);
         var childrenList = children.ToList();
@@ -772,14 +858,8 @@ public class J18nJoint : ICloneable
         );
     }
 
-    public bool UpdateChild(
-        string key ,
-        string rawText ,
-        J18nJointType type ,
-        out J18nJoint? oldJoint ,
-        string comment = "" ,
-        string description = ""
-    )
+    public bool UpdateChild(string key , string rawText , J18nJointType type ,
+        out J18nJoint? oldJoint , string comment = "" , string description = "")
     {
         var newChild = new J18nJoint(key , rawText , type , comment , description);
 
@@ -801,14 +881,8 @@ public class J18nJoint : ICloneable
         );
     }
 
-    public bool UpdateChild(
-        int index ,
-        string rawText ,
-        J18nJointType type ,
-        out J18nJoint? oldJoint ,
-        string comment = "" ,
-        string description = ""
-    )
+    public bool UpdateChild(int index , string rawText , J18nJointType type ,
+        out J18nJoint? oldJoint , string comment = "" , string description = "")
     {
         var newChild = new J18nJoint(index , rawText , type , comment , description);
 
@@ -834,19 +908,15 @@ public class J18nJoint : ICloneable
     {
         oldChild.Index = newChild.Index;
         oldChild._key = newChild._key;
-        oldChild.RawText = newChild.RawText;
+        oldChild._rawText = newChild._rawText;
         oldChild.Type = newChild.Type;
         oldChild.Comment = newChild.Comment;
         oldChild.Description = newChild.Description;
         //oldChild.ModificationTime = DateTime.UtcNow; // Implemented in root method
     };
 
-    public bool UpdateChildBase(
-        Func<J18nJoint , bool> findOldChild ,
-        J18nJoint newChild ,
-        Action<J18nJoint , J18nJoint> updateAction ,
-        out J18nJoint? oldJoint
-    )
+    public bool UpdateChildBase(Func<J18nJoint , bool> findOldChild , J18nJoint newChild ,
+        Action<J18nJoint , J18nJoint> updateAction , out J18nJoint? oldJoint)
     {
         var oldChild = Children?.FirstOrDefault(findOldChild);
         if(oldChild is not null)
@@ -910,10 +980,10 @@ public class J18nJoint : ICloneable
         return false;
     }
 
-    public async Task<(bool, J18nJoint?)> RemoveChildBaseAsync(
-        Func<J18nJoint , bool> findTheChild ,
-        CancellationToken ctsToken
-    )
+    // TODO! Need to Update as the implementation in the RemoveChildBase.
+    // And extract the update logic for different joint type out.
+    public async Task<(bool, J18nJoint?)> RemoveChildBaseAsync(Func<J18nJoint , bool> findTheChild ,
+        CancellationToken ctsToken)
     {
         Children ??= new HashSet<J18nJoint>();
 
@@ -926,13 +996,19 @@ public class J18nJoint : ICloneable
 
             var tasks = Children
                 .Where(joint => joint.Index > removedJoint.Index)
-                .Select(async joint =>
+                .AsParallel()
+                .Select(async j =>
                 {
-                    joint.Index--;
                     await Task.Yield(); // 确保异步任务能够在不同的线程上执行
+                    j.Index--;
+                    if(this.Type.Equals(J18nJointType.Array))
+                    {
+                        j.Key = $"[{j.Index}]";
+                    }
                 });
-            RaiseJointUpdateEvent(this);
+
             await Task.WhenAll(tasks);
+            RaiseJointUpdateEvent(this);
             return (true, removedJoint);
         }
 
@@ -945,26 +1021,28 @@ public class J18nJoint : ICloneable
         RaiseJointUpdateEvent(this);
     }
 
-    public J18nJoint ShadowClone( )
+    public J18nJoint ShadowClone(J18nJoint? parent = null)
     {
         return new J18nJoint()
         {
-            Index = this.Index ,
-            Key = this._key ,
-            RawText = this._rawText , // Set the path for the _rawText field
-            Type = this.Type ,
-            Comment = this.Comment ,
-            Description = this.Description ,
-            Path = this._path , // Set the path for the _path field
+            _parent = parent ,
+            _index = this._index ,
+            _key = this._key ,
+            _rawText = this._rawText , // Set the path for the _rawText field
+            _type = this._type ,
+            _comment = this._comment ,
+            _description = this._description ,
+            _path = this._path , // Set the path for the _path field
             CreationTime = this.CreationTime ,
             ModificationTime = this.ModificationTime ,
-            Children = this.Children?.Select(c => c.ShadowClone()).ToHashSet() ,
+            _children = this._children?.Select(c => c.ShadowClone(this)).ToHashSet() ,
         };
     }
 
-    public J18nJoint DeepClone(CancellationToken? ctsToken)
+    public J18nJoint DeepClone(J18nJoint? parent = null , CancellationToken? ctsToken = null)
     {
         var clone = ShadowClone();
+        clone._parent = parent;
 
         ParallelOptions parallelOptions = new ParallelOptions
         {
@@ -977,8 +1055,8 @@ public class J18nJoint : ICloneable
             var result = Parallel.ForEach(clone.Children , parallelOptions ,
                 child =>
                 {
-                    child.Parent = clone;
-                    child.DeepClone(ctsToken);
+                    child._parent = clone;
+                    child.DeepClone(this , ctsToken);
                 }
             );
 
@@ -991,9 +1069,10 @@ public class J18nJoint : ICloneable
         return clone;
     }
 
-    public async Task<J18nJoint> DeepCloneAsync(CancellationToken? ctsToken)
+    public async Task<J18nJoint> DeepCloneAsync(J18nJoint? parent = null , CancellationToken? ctsToken = null)
     {
         var clone = ShadowClone();
+        clone._parent = parent;
 
         ParallelOptions parallelOptions = new ParallelOptions
         {
@@ -1008,8 +1087,8 @@ public class J18nJoint : ICloneable
                 parallelOptions ,
                 child =>
                 {
-                    child.Parent = clone;
-                    child.DeepClone(ctsToken);
+                    child._parent = clone;
+                    child.DeepClone(parent , ctsToken);
                 }
             );
 
@@ -1024,7 +1103,7 @@ public class J18nJoint : ICloneable
 
     object ICloneable.Clone( )
     {
-        return DeepClone(CancellationToken.None);
+        return DeepClone(null , CancellationToken.None);
     }
 
     #region EqualityComparer Related
