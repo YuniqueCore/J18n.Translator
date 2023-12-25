@@ -264,7 +264,7 @@ public class JsonDifferTest
                 .SelectMany(p => p!)
                 .Distinct();
 
-            UpdateSubJoints(rootJ18n , updateProperties);
+            var updatedJoints = UpdateSubJoints(rootJ18n , updateProperties);
 
             int a = 0;
         }
@@ -287,6 +287,12 @@ public class JsonDifferTest
                 // Update the raw text, and parse it
                 // But now, the string type seems not right..
                 // It should only update the RawText of the joint and do not link a new child joint
+
+                // Still existing problem: 
+                // 1. Null RawText
+                // 2. Null Children
+                // 3. Should update RawText and Children
+                // 4. Should update the parent's RawText
                 if(j18NJoint is not null)
                 {
                     var newJoint = new J18nJoint()
