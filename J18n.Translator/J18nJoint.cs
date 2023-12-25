@@ -2,7 +2,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -200,6 +199,7 @@ public class J18nJoint : ICloneable
             }
         }
     }
+    [Newtonsoft.Json.JsonIgnore()]
     public J18nJoint? Parent
     {
         get => _parent;
@@ -212,6 +212,7 @@ public class J18nJoint : ICloneable
             }
         }
     }
+    [Newtonsoft.Json.JsonIgnore()]
     public J18nJoint? Last
     {
         get
@@ -224,6 +225,7 @@ public class J18nJoint : ICloneable
             return last;
         }
     }
+    [Newtonsoft.Json.JsonIgnore()]
     public J18nJoint? Next
     {
         get
@@ -310,8 +312,11 @@ public class J18nJoint : ICloneable
             }
         }
     }
+    [Newtonsoft.Json.JsonIgnore()]
     public DateTime CreationTime { get; private set; } = DateTime.UtcNow;
+    [Newtonsoft.Json.JsonIgnore()]
     public DateTime ModificationTime { get; private set; } = DateTime.UtcNow;
+    [Newtonsoft.Json.JsonIgnore()]
     public J18nJointType Type
     {
         get => _type;
@@ -464,11 +469,6 @@ public class J18nJoint : ICloneable
 
     public void ParseRawText(bool recursive = false)
     {
-
-        //var text = RawText is null ? string.Empty :
-        //    RawText.StartsWith('{') && RawText.EndsWith('}') ?
-        //    RawText : string.Format("{{{0}}}" , RawText);
-
         var root = JsonConvert.DeserializeObject<JToken?>(RawText ?? string.Empty)?.Root;
         UpdateRawTextAndChildren(root , recursive , false);
     }
@@ -480,8 +480,7 @@ public class J18nJoint : ICloneable
     }
 
     public J18nJoint? UpdateRawTextAndChildren(JToken? root ,
-        bool recursive = false ,
-        bool updateRawText = false)
+        bool recursive = false , bool updateRawText = false)
     {
         if(root is null)
             return null;
@@ -725,7 +724,7 @@ public class J18nJoint : ICloneable
         var modifiedTime = DateTime.UtcNow;
 
         // If the modification time is within 3 seconds, ignore it.
-        if((modifiedTime - current.ModificationTime) <= TimeSpan.FromSeconds(3))
+        if((modifiedTime - current?.ModificationTime) <= TimeSpan.FromSeconds(3))
         {
             return;
         }
@@ -782,10 +781,10 @@ public class J18nJoint : ICloneable
             return;
         }
         var listc = new List<J18nJoint>(children);
-        foreach(var item in children)
-        {
-            Debug.WriteLine(item);
-        }
+        //foreach(var item in children)
+        //{
+        //    Debug.WriteLine(item);
+        //}
 
         ThrowDuplicatedException(children);
         var childrenList = children.ToList();
@@ -918,14 +917,14 @@ public class J18nJoint : ICloneable
     public bool UpdateChildBase(Func<J18nJoint , bool> findOldChild , J18nJoint newChild ,
         Action<J18nJoint , J18nJoint> updateAction , out J18nJoint? oldJoint)
     {
-        var oldChild = Children?.FirstOrDefault(findOldChild);
-        if(oldChild is not null)
+        var ready2UpdateChild = Children?.FirstOrDefault(findOldChild);
+        if(ready2UpdateChild is not null)
         {
-            ThrowDuplicatedException(new[] { newChild } , new[] { oldChild._key });
-            oldJoint = oldChild.ShadowClone();
-            updateAction.Invoke(oldChild , newChild);
-            RaiseJointUpdateEvent(oldChild);
-            if(newChild.Index != oldChild.Index)
+            ThrowDuplicatedException(new[] { newChild } , new[] { ready2UpdateChild._key });
+            oldJoint = ready2UpdateChild.ShadowClone();
+            updateAction.Invoke(ready2UpdateChild , newChild);
+            RaiseJointUpdateEvent(ready2UpdateChild);
+            if(newChild.Index != oldJoint.Index)
             {
                 RaiseChildrenUpdateEvent(this);
             }
@@ -1106,6 +1105,20 @@ public class J18nJoint : ICloneable
         return DeepClone(null , CancellationToken.None);
     }
 
+    public override string ToString( )
+    {
+        //var settings = new JsonSerializerSettings
+        //{
+        //    Formatting = Formatting.Indented ,
+        //    ReferenceLoopHandling = ReferenceLoopHandling.Ignore ,
+        //    NullValueHandling = NullValueHandling.Include
+        //};
+
+        //var json = JsonConvert.SerializeObject(this , settings);
+
+        //return json;
+        return base.ToString();
+    }
     #region EqualityComparer Related
 
     // override hashcode cause HashSet cannot remove item successfully...

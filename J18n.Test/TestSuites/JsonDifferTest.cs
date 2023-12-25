@@ -289,12 +289,21 @@ public class JsonDifferTest
                 // It should only update the RawText of the joint and do not link a new child joint
                 if(j18NJoint is not null)
                 {
-                    j18NJoint.RawText = kv.Value switch
+                    var newJoint = new J18nJoint()
                     {
-                        JProperty property => property.Value?.ToString(),
-                        _ => kv.Value?.ToString(),
+                        Index = j18NJoint.Index ,
+                        Key = j18NJoint.Key ,
+                        Type = j18NJoint.Type ,
+                        Comment = j18NJoint.Comment ,
+                        Description = j18NJoint.Description ,
                     };
-                    j18NJoint.ParseRawText(true);
+
+                    JToken? jToken = (kv.Value as JProperty)?.Value;
+
+                    newJoint.UpdateRawTextAndChildren(jToken , true , true);
+
+                    j18NJoint.Parent?.UpdateChild(newJoint , out var oldJoint);
+                    //j18NJoint.ParseRawText(true);
                     updatedJoints.Add(j18NJoint);
                 }
             }
