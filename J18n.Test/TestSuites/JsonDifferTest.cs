@@ -235,7 +235,7 @@ public class JsonDifferTest
 
     [TestMethod]
     [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
-    public void NormallyRemoveJointsOnJ18nJoint2_Test(string originalJson , string updatedJson)
+    public void NormallyupdateJointsOnJ18nJoint_Test(string originalJson , string updatedJson)
     {
         var rootJ18n = new J18nJoint()
         {
@@ -264,58 +264,53 @@ public class JsonDifferTest
                 .SelectMany(p => p!)
                 .Distinct();
 
-            var updatedJoints = UpdateSubJoints(rootJ18n , updateProperties);
+            var updatedJoints = rootJ18n.UpdateSubJoints(updateProperties);
 
             int a = 0;
         }
+        J18nJoint tomtanze2JohnDoe = rootJ18n.GetSubJointByPath(".nestedObject.name");
+        Assert.IsTrue(tomtanze2JohnDoe.Key.Equals("name") && tomtanze2JohnDoe.RawText.Contains("John Doe") ,
+                        "The .nestedObject.name is John Doe now. The value was updated from tomtanze successfully.");
+    }
 
-
-        IEnumerable<J18nJoint> UpdateSubJoints(J18nJoint parent , IEnumerable<KeyValuePair<string , JToken?>> subJointsDict)
+    [TestMethod]
+    [DataRow(JsonDiffData.initialJson , JsonDiffData.updatedJson)]
+    public void NormallyAttachJointsOnJ18nJoint_Test(string originalJson , string updatedJson)
+    {
+        var rootJ18n = new J18nJoint()
         {
-            if(parent is null || subJointsDict is null)
+            Key = "root" ,
+            RawText = originalJson ,
+            Type = J18nJointType.Object ,
+            Comment = "The root" ,
+            Index = 0 ,
+        };
+        rootJ18n.ParseRawText(true);
+        var differences = Quibble.CSharp.JsonStrings.Diff(originalJson , updatedJson);
+        using(var diffHandlerManager = new JsonDiffer.DiffHandlerManager(updatedJson))
+        {
+            var results = new List<JsonDiffer.DiffResult?>();
+            for(int i = 0; i < differences.Count; i++)
             {
-                return Enumerable.Empty<J18nJoint>();
+                var valueDiffHandler = diffHandlerManager.GetDiffHandlerChain();
+
+                var diff = differences[i];
+                var result = valueDiffHandler?.Handle(diff);
+                results.Add(result);
             }
 
-            List<J18nJoint> updatedJoints = new List<J18nJoint>();
+            var updateProperties = results.Select(r => r?.UpdatedPropertiesDict)
+                .Where(p => p is not null)
+                .SelectMany(p => p!)
+                .Distinct();
 
-            foreach(var kv in subJointsDict)
-            {
-                J18nJoint? j18NJoint = parent.GetSubJointByPath(kv.Key.StartsWith('.') ? kv.Key : $".{kv.Key}");
+            var updatedJoints = rootJ18n.UpdateSubJoints(updateProperties);
 
-                // Need to update the joint
-                // Update the raw text, and parse it
-                // But now, the string type seems not right..
-                // It should only update the RawText of the joint and do not link a new child joint
-
-                // Still existing problem: 
-                // 1. Null RawText
-                // 2. Null Children
-                // 3. Should update RawText and Children
-                // 4. Should update the parent's RawText
-                if(j18NJoint is not null)
-                {
-                    var newJoint = new J18nJoint()
-                    {
-                        Index = j18NJoint.Index ,
-                        Key = j18NJoint.Key ,
-                        Type = j18NJoint.Type ,
-                        Comment = j18NJoint.Comment ,
-                        Description = j18NJoint.Description ,
-                    };
-
-                    JToken? jToken = (kv.Value as JProperty)?.Value;
-
-                    newJoint.UpdateRawTextAndChildren(jToken , true , true);
-
-                    j18NJoint.Parent?.UpdateChild(newJoint , out var oldJoint);
-                    //j18NJoint.ParseRawText(true);
-                    updatedJoints.Add(j18NJoint);
-                }
-            }
-
-            return updatedJoints;
+            int a = 0;
         }
+        J18nJoint tomtanze2JohnDoe = rootJ18n.GetSubJointByPath(".nestedObject.name");
+        Assert.IsTrue(tomtanze2JohnDoe.Key.Equals("name") && tomtanze2JohnDoe.RawText.Contains("John Doe") ,
+                       "The .nestedObject.name is John Doe now. The value was updated from tomtanze successfully.");
     }
 
 }

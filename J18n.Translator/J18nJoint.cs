@@ -97,6 +97,108 @@ public static class J18nJointExtension
     }
 
     /// <summary>
+    /// Updates a specific sub-joint within the hierarchy based on the provided path and new joint.
+    /// </summary>
+    /// <param name="parent">The parent J18nJoint containing the sub-joint to be updated.</param>
+    /// <param name="path">The dot-separated path indicating the location of the sub-joint to be updated.</param>
+    /// <param name="newJoint">The new JToken representing the updated sub-joint's value.</param>
+    /// <returns>The updated sub-joint if found; otherwise, null.</returns>
+    public static J18nJoint? UpdateSubJoint(this J18nJoint parent , string path , JToken? newJoint)
+    {
+        return UpdateSubJoints(parent , new Dictionary<string , JToken?>() { { path , newJoint } }).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Updates the sub-joints of a parent J18nJoint based on the provided sub-joints dictionary.
+    /// </summary>
+    /// <param name="parent">The parent J18nJoint whose sub-joints need to be updated.</param>
+    /// <param name="subJointsDict">A dictionary containing key-value pairs representing sub-joints and their updated values.</param>
+    /// <returns>A collection of updated J18nJoints; empty if the parent or subJointsDict is null.</returns>
+    public static IEnumerable<J18nJoint> UpdateSubJoints(this J18nJoint parent , IEnumerable<KeyValuePair<string , JToken?>> subJointsDict)
+    {
+        if(parent is null || subJointsDict is null)
+        {
+            return Enumerable.Empty<J18nJoint>();
+        }
+
+        List<J18nJoint> updatedJoints = new List<J18nJoint>();
+
+        // Need to update the joint
+        // Update the raw text, and parse it
+        // But now, the string type seems not right..
+        // It should only update the RawText of the joint and do not link a new child joint
+
+        // Still existing problem: 
+        // 1. [√] Null RawText
+        // 2. [√] Null Children
+        // 3. [√] Should update RawText and Children
+        // 4. [√] Should update the parent's RawText
+
+        foreach(var kv in subJointsDict)
+        {
+            J18nJoint? j18NJoint = parent.GetSubJointByPath(kv.Key.StartsWith('.') ? kv.Key : $".{kv.Key}");
+
+            if(j18NJoint is not null)
+            {
+                var newJoint = new J18nJoint()
+                {
+                    Index = j18NJoint.Index ,
+                    Key = j18NJoint.Key ,
+                    Type = j18NJoint.Type ,
+                    Comment = j18NJoint.Comment ,
+                    Description = j18NJoint.Description ,
+                };
+                JToken? jToken = (kv.Value as JProperty)?.Value;
+
+                newJoint.UpdateRawTextAndChildren(jToken , true , true);
+
+                j18NJoint.Parent?.UpdateChild(newJoint , out var oldJoint);
+
+                updatedJoints.Add(j18NJoint);
+            }
+            else
+            {
+                // It means that no specified path joint, so need to attach it to the parent
+                // but how to indeterminate the index of the new added joint?
+                // Currently, It seems not possible to do that
+                // So, just add it to the end of the parent's children
+
+                // if the parent path is not exist
+                // looking for the grand-parent path till it is found.
+                // And need to build the path from the grand-parent to make the node path same as the kv.Key
+                var pathNodes = kv.Key.Split('.');
+                int lastPath = pathNodes.Length;
+                while(j18NJoint is null && lastPath >= 0)
+                {
+                    pathNodes = pathNodes[..lastPath];
+                    var parentPath = string.Join('.' , pathNodes);
+                    j18NJoint = parent.GetSubJointByPath(parentPath.StartsWith('.') ? parentPath : $".{parentPath}");
+                    lastPath--;
+                }
+
+                if(j18NJoint is null)
+                {
+                    throw new ArgumentException($"Cannot find the parent joint of the path: {kv.Key}");
+                }
+
+                var newJoint = new J18nJoint(kv.Value);
+                //{
+                //    Key = j18NJoint.Key ,
+                //    Type = j18NJoint.Type ,
+                //    Comment = j18NJoint.Comment ,
+                //    Description = j18NJoint.Description ,
+                //};
+
+                j18NJoint.AddChildren(newJoint);
+
+                updatedJoints.Add(j18NJoint);
+            }
+        }
+
+        return updatedJoints;
+    }
+
+    /// <summary>
     /// Parses a hierarchical path that may include dot notation ('.') and square brackets ('[]').
     /// </summary>
     /// <param name="path">The path to be parsed.</param>
@@ -367,6 +469,9 @@ public class J18nJoint : ICloneable
     protected virtual void RaiseRawTextChangeEvent(RawTextExchangArg textExchangArg)
     {
         OnRawTextChanging?.Invoke(this , textExchangArg);
+        var originalKV = new string($"\"{textExchangArg.Joint.Key}\": {textExchangArg.OldRawText}");
+        var newKV = new string($"\"{textExchangArg.Joint.Key}\": {textExchangArg.NewRawText}");
+        UpdateRawText(originalKV , newKV);
         UpdateChildrenFromRawText(textExchangArg);
         OnRawTextChanged?.Invoke(this , textExchangArg);
     }
@@ -507,6 +612,18 @@ public class J18nJoint : ICloneable
         }
 
         return this;
+    }
+
+    private void UpdateRawText(string originalKV , string newKV)
+    {
+        J18nJoint? parent = this;
+
+        while(parent is not null)
+        {
+            parent.RawText = parent.RawText?.Replace(originalKV , newKV);
+            parent = parent.Parent;
+        }
+        int a = 0;
     }
 
     private void ParseString(JToken? root)
@@ -924,6 +1041,12 @@ public class J18nJoint : ICloneable
             oldJoint = ready2UpdateChild.ShadowClone();
             updateAction.Invoke(ready2UpdateChild , newChild);
             RaiseJointUpdateEvent(ready2UpdateChild);
+            RaiseRawTextChangeEvent(new RawTextExchangArg()
+            {
+                Joint = ready2UpdateChild ,
+                OldRawText = oldJoint.RawText ,
+                NewRawText = newChild.RawText
+            });
             if(newChild.Index != oldJoint.Index)
             {
                 RaiseChildrenUpdateEvent(this);
